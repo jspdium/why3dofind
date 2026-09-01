@@ -12,6 +12,8 @@ examples/counter/         Concurrent counter using a lock, by refinement
 examples/twoPhase/        Two-phase handshake protocol, by refinement
 examples/mutualExclusionConcurrent/
                           Mutual exclusion algorithms (Peterson, Bakery, etc.)
+examples/mutualExclusionToken/
+                          Dijkstra self-stabilizing ring and bidirectional array
 ```
 
 Cross-file dependencies in why3find are resolved through installed

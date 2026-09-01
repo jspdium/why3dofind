@@ -31,5 +31,8 @@ install_pkg mutexAbstractN examples/mutualExclusionConcurrent/mutexAbstractN.mlw
 install_pkg mutexAbstract  examples/mutualExclusionConcurrent/mutexAbstract.mlw
 install_pkg Peterson       examples/mutualExclusionConcurrent/Peterson.mlw
 
+# mutualExclusionToken
+install_pkg oneToken        examples/mutualExclusionToken/oneToken.mlw
+
 echo "done. packages installed:"
 why3find list
