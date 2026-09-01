@@ -1,0 +1,37 @@
+{
+  "profile": [],
+  "proofs": {
+    "ChangRoberts": {
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.014 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.094 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.015 },
+      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.035 },
+      "act": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.016 },
+          { "prover": "cvc5@1.0.3", "time": 0.017 },
+          { "prover": "cvc5@1.0.3", "time": 0.018 },
+          { "prover": "cvc5@1.0.3", "time": 0.027 },
+          { "prover": "cvc5@1.0.3", "time": 0.064 },
+          { "prover": "z3@4.11.2", "time": 1.2 },
+          {
+            "tactic": "split_vc",
+            "children": [
+              {
+                "tactic": "split_vc",
+                "children": [
+                  null, { "prover": "cvc5@1.0.3", "time": 0.035 }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "next": { "prover": "cvc5@1.0.3", "time": 0.062 },
+      "pred": { "prover": "cvc5@1.0.3", "time": 0.058 },
+      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.04 }
+    }
+  }
+}

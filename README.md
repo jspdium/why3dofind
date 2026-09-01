@@ -14,6 +14,7 @@ examples/mutualExclusionConcurrent/
                           Mutual exclusion algorithms (Peterson, Bakery, etc.)
 examples/mutualExclusionToken/
                           Dijkstra self-stabilizing ring and bidirectional array
+examples/leaderElection/  Chang-Roberts leader election, by refinement
 ```
 
 Cross-file dependencies in why3find are resolved through installed

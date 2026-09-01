@@ -1,0 +1,14 @@
+{
+  "profile": [],
+  "proofs": {
+    "LeaderElectMax": {
+      "act": { "prover": "cvc5@1.0.3", "time": 0.019 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "maxId_fn": { "prover": "cvc5@1.0.3", "time": 0.016 },
+      "stepA'refn": { "prover": "alt-ergo@2.4.2", "time": 0.004 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.023 },
+      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.018 }
+    }
+  }
+}

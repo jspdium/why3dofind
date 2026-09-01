@@ -34,5 +34,9 @@ install_pkg Peterson       examples/mutualExclusionConcurrent/Peterson.mlw
 # mutualExclusionToken
 install_pkg oneToken        examples/mutualExclusionToken/oneToken.mlw
 
+# leaderElection
+install_pkg leaderElect     examples/leaderElection/leaderElect.mlw
+install_pkg leaderElectMax  examples/leaderElection/leaderElectMax.mlw
+
 echo "done. packages installed:"
 why3find list
