@@ -10,22 +10,17 @@
         "tactic": "split_vc",
         "children": [
           { "prover": "cvc5@1.0.3", "time": 0.016 },
+          { "prover": "cvc5@1.0.3", "time": 0.016 },
+          { "prover": "cvc5@1.0.3", "time": 0.061 },
+          { "prover": "cvc5@1.0.3", "time": 0.017 },
+          { "prover": "cvc5@1.0.3", "time": 0.019 },
+          { "prover": "cvc5@1.0.3", "time": 0.014 },
           { "prover": "cvc5@1.0.3", "time": 0.017 },
           { "prover": "cvc5@1.0.3", "time": 0.018 },
-          { "prover": "cvc5@1.0.3", "time": 0.027 },
-          { "prover": "cvc5@1.0.3", "time": 0.064 },
-          { "prover": "z3@4.11.2", "time": 1.2 },
-          {
-            "tactic": "split_vc",
-            "children": [
-              {
-                "tactic": "split_vc",
-                "children": [
-                  null, { "prover": "cvc5@1.0.3", "time": 0.035 }
-                ]
-              }
-            ]
-          }
+          { "prover": "cvc5@1.0.3", "time": 0.025 },
+          { "prover": "cvc5@1.0.3", "time": 0.066 },
+          { "prover": "z3@4.11.2", "time": 1.7 },
+          { "prover": "cvc5@1.0.3", "time": 0.035 }
         ]
       },
       "initWorld": { "prover": "cvc5@1.0.3", "time": 0.032 },

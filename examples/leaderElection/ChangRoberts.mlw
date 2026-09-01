@@ -101,7 +101,14 @@ module ChangRoberts
   = match w.inMsgs[h] with  
     | Nil -> absurd  
     | Cons m t -> let in_Msgs = w.inMsgs[h<-t] in 
-      if m = id h then { isMaxLeader = w.isMaxLeader[h<-true] ; inMsgs = in_Msgs }
+      if m = id h then
+        let r = { isMaxLeader = w.isMaxLeader[h<-true] ; inMsgs = in_Msgs } in
+        assert { mem (id h) (w.inMsgs[h]) } ;
+        assert { inv w -> h = maxId_global } ;
+        assert { inv w -> LeaderElectMax.act_enbld (refn w) h } ;
+        assert { inv w -> refn r = LeaderElectMax.act (refn w) h } ;
+        assert { inv w -> LeaderElectMax.stepind (refn w) (refn r) } ;
+        r
       else if m > id h then { isMaxLeader = w.isMaxLeader; inMsgs = in_Msgs[next h <- w.inMsgs[next h]++(Cons m Nil)] } 
       else { isMaxLeader = w.isMaxLeader; inMsgs = in_Msgs }
     end

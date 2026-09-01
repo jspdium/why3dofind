@@ -113,9 +113,12 @@ module BroadcastLeaderElect
     requires { send_enbld w h }
     ensures  { inv w -> inv result }
     ensures  { inv w -> refn result = refn w }
-  = { value = w.value ;
+  = let r = { value = w.value ;
       sent = w.sent[h<-true] ; 
-      inMsgs = broadcast w n_nodes h }
+      inMsgs = broadcast w n_nodes h } in
+    assert { forall k:node. 0<=k<n_nodes -> r.value[k] = w.value[k] } ;
+    assert { forall k:node. 0<=k<n_nodes -> finalNd w k -> finalNd r k } ;
+    r
 
 
 
@@ -132,9 +135,18 @@ module BroadcastLeaderElect
     | Nil -> absurd 
     | Cons m t -> 
       let max = if m > w.value[h] then m else w.value[h]
-      in { value = w.value[h<-max] ;
+      in let r = { value = w.value[h<-max] ;
            sent = w.sent ; 
-           inMsgs = w.inMsgs[h<-t] }
+           inMsgs = w.inMsgs[h<-t] } in
+      assert { r.value[h] = max } ;
+      assert { inv w -> id h <= r.value[h] <= id maxId_global } ;
+      assert { inv w -> forall k:node. 0<=k<n_nodes -> k<>h ->
+               r.inMsgs[k] = w.inMsgs[k] } ;
+      assert { inv w -> forall k:node. 0<=k<n_nodes -> k<>h ->
+               w.sent[maxId_global] -> r.value[k] = id maxId_global \/ mem (id maxId_global) r.inMsgs[k] } ;
+      assert { inv w -> w.sent[maxId_global] ->
+               r.value[h] = id maxId_global \/ mem (id maxId_global) r.inMsgs[h] } ;
+      r
     end
 
 
