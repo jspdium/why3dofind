@@ -17,6 +17,8 @@ examples/mutualExclusionToken/
 examples/leaderElection/  Chang-Roberts leader election, by refinement
 examples/waitFreeRegister/
                           Simpson's 4-slot wait-free register, by refinement
+examples/paxosNoRefinement/
+                          Paxos consensus (stand-alone, no refinement)
 ```
 
 Cross-file dependencies in why3find are resolved through installed
