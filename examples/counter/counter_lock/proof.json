@@ -4,13 +4,13 @@
     "CounterImpl": {
       "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.003 },
       "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
-      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
-      "Refinement.stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.01 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "Refinement.stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.011 },
       "initWorld": { "prover": "cvc5@1.0.3", "time": 0.009 },
       "refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
-      "safety_by_refinement": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "safety_by_refinement": { "prover": "cvc5@1.0.3", "time": 0.004 },
       "step_One": { "prover": "cvc5@1.0.3", "time": 0.008 },
-      "step_Three": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "step_Three": { "prover": "cvc5@1.0.3", "time": 0.008 },
       "step_Two": { "prover": "cvc5@1.0.3", "time": 0.014 },
       "step_Zero": { "prover": "cvc5@1.0.3", "time": 0.008 }
     }

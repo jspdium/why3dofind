@@ -1,6 +1,6 @@
 {
   "profile": [],
   "proofs": {
-    "Counter": { "trans": { "prover": "cvc5@1.0.3", "time": 0.002 } }
+    "Counter": { "trans": { "prover": "cvc5@1.0.3", "time": 0.003 } }
   }
 }

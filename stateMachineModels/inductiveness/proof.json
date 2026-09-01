@@ -9,7 +9,7 @@
           { "prover": "cvc5@1.0.3", "time": 0.003 }
         ]
       },
-      "inv_reachable": { "prover": "cvc5@1.0.3", "time": 0.002 }
+      "inv_reachable": { "prover": "cvc5@1.0.3", "time": 0.003 }
     }
   }
 }

@@ -3,17 +3,17 @@
   "proofs": {
     "CounterImpl": {
       "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.015 },
-      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
       "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.013 },
-      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.027 },
-      "correctness": { "prover": "cvc5@1.0.3", "time": 0.073 },
+      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.025 },
+      "correctness": { "prover": "cvc5@1.0.3", "time": 0.069 },
       "initWorld": { "prover": "cvc5@1.0.3", "time": 0.02 },
       "refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
       "safety_by_refinement": { "prover": "cvc5@1.0.3", "time": 0.011 },
-      "step_One": { "prover": "cvc5@1.0.3", "time": 0.086 },
-      "step_Three": { "prover": "cvc5@1.0.3", "time": 0.237 },
-      "step_Two": { "prover": "cvc5@1.0.3", "time": 0.882 },
-      "step_Zero": { "prover": "cvc5@1.0.3", "time": 0.109 }
+      "step_One": { "prover": "cvc5@1.0.3", "time": 0.084 },
+      "step_Three": { "prover": "cvc5@1.0.3", "time": 0.222 },
+      "step_Two": { "prover": "cvc5@1.0.3", "time": 0.788 },
+      "step_Zero": { "prover": "cvc5@1.0.3", "time": 0.106 }
     }
   }
 }

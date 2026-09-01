@@ -1,6 +1,0 @@
-{
-  "profile": [],
-  "proofs": {
-    "Alternate": { "next": { "prover": "cvc5@1.0.3", "time": 0.003 } }
-  }
-}
