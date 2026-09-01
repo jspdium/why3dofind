@@ -3,7 +3,8 @@
   "time": 10.0,
   "depth": 4,
   "packages": [
-    "counter_alt", "counter", "inductiveness.mlw", "refinement.mlw"
+    "counter_alt", "counter", "inductiveness.mlw", "refinement.mlw",
+    "alternate", "mutexAbstractN", "mutexAbstract", "Peterson"
   ],
   "provers": [ "cvc5@1.0.3", "alt-ergo@2.4.2", "z3@4.11.2" ],
   "tactics": [ "induction_pr", "split_vc" ],

@@ -1,0 +1,23 @@
+{
+  "profile": [],
+  "proofs": {
+    "PetersonAtom": {
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "Refinement.stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.047 },
+      "a1": { "prover": "cvc5@1.0.3", "time": 2.1 },
+      "a2": { "prover": "cvc5@1.0.3", "time": 1.4 },
+      "a3a": { "prover": "cvc5@1.0.3", "time": 0.635 },
+      "a3b": { "prover": "cvc5@1.0.3", "time": 0.796 },
+      "a4": { "prover": "cvc5@1.0.3", "time": 0.747 },
+      "cs": { "prover": "cvc5@1.0.3", "time": 2.2 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "safety": { "prover": "cvc5@1.0.3", "time": 0.035 },
+      "safety_Peterson": {
+        "tactic": "split_vc",
+        "children": [ { "prover": "alt-ergo@2.4.2", "time": 13.2 } ]
+      }
+    }
+  }
+}
