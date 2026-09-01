@@ -1,0 +1,24 @@
+{
+  "profile": [],
+  "proofs": {
+    "FourSlots": {
+      "a": { "prover": "cvc5@1.0.3", "time": 0.078 },
+      "am1": { "prover": "cvc5@1.0.3", "time": 1.6 },
+      "am2": { "prover": "cvc5@1.0.3", "time": 0.122 },
+      "ap1": { "prover": "cvc5@1.0.3", "time": 0.05 },
+      "ap2": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "b": { "prover": "cvc5@1.0.3", "time": 0.12 },
+      "bm1": { "prover": "cvc5@1.0.3", "time": 0.079 },
+      "bm2": { "prover": "cvc5@1.0.3", "time": 0.069 },
+      "bm3": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "bp1": { "prover": "cvc5@1.0.3", "time": 0.036 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "safetyAbs": { "prover": "cvc5@1.0.3", "time": 0.023 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.011 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.052 },
+      "world": { "prover": "cvc5@1.0.3", "time": 0.006 }
+    }
+  }
+}

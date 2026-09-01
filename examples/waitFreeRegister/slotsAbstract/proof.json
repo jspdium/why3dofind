@@ -1,0 +1,13 @@
+{
+  "profile": [],
+  "proofs": {
+    "SlotsAbstract": {
+      "cs": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "rd": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "safety": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "step'refn": { "prover": "alt-ergo@2.4.2", "time": 0.006 },
+      "wr": { "prover": "cvc5@1.0.3", "time": 0.004 }
+    }
+  }
+}

@@ -15,6 +15,8 @@ examples/mutualExclusionConcurrent/
 examples/mutualExclusionToken/
                           Dijkstra self-stabilizing ring and bidirectional array
 examples/leaderElection/  Chang-Roberts leader election, by refinement
+examples/waitFreeRegister/
+                          Simpson's 4-slot wait-free register, by refinement
 ```
 
 Cross-file dependencies in why3find are resolved through installed

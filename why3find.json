@@ -5,7 +5,7 @@
   "packages": [
     "counter_alt", "counter", "inductiveness.mlw", "refinement.mlw",
     "alternate", "mutexAbstractN", "mutexAbstract", "Peterson", "oneToken",
-    "leaderElect", "leaderElectMax"
+    "leaderElect", "leaderElectMax", "slotsAbstract"
   ],
   "provers": [ "cvc5@1.0.3", "alt-ergo@2.4.2", "z3@4.11.2" ],
   "tactics": [ "induction_pr", "split_vc" ],

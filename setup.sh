@@ -38,5 +38,8 @@ install_pkg oneToken        examples/mutualExclusionToken/oneToken.mlw
 install_pkg leaderElect     examples/leaderElection/leaderElect.mlw
 install_pkg leaderElectMax  examples/leaderElection/leaderElectMax.mlw
 
+# waitFreeRegister
+install_pkg slotsAbstract   examples/waitFreeRegister/slotsAbstract.mlw
+
 echo "done. packages installed:"
 why3find list
