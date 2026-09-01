@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# why3find proof cache
+.why3find/
+
+# backup files
+*.bak

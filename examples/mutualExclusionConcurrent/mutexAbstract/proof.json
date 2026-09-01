@@ -1,0 +1,14 @@
+{
+  "profile": [],
+  "proofs": {
+    "MutexAbstract": {
+      "cs": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "i": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "safety": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.012 }
+    }
+  }
+}

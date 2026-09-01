@@ -1,0 +1,16 @@
+{
+  "fast": 0.2,
+  "time": 10.0,
+  "depth": 4,
+  "packages": [
+    "refinement.mlw", "inductiveness.mlw", "modelMP", "modelMPEnabledTrace",
+    "modelMPEnabledTraceDupl", "counter", "counter_alt", "alternate",
+    "mutexAbstract", "mutexAbstractN", "Peterson", "slotsAbstract",
+    "leaderElect", "leaderElectMax", "oneToken", "consensus", "voting",
+    "specLDT"
+  ],
+  "provers": [ "cvc5@1.0.3", "alt-ergo@2.4.2", "z3@4.11.2" ],
+  "tactics": [ "induction_pr", "split_vc" ],
+  "drivers": [],
+  "warnoff": []
+}

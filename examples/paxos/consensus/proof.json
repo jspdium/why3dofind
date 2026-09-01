@@ -1,0 +1,11 @@
+{
+  "profile": [],
+  "proofs": {
+    "Consensus": {
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
+      "next": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "safety": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "step'refn": { "prover": "cvc5@1.0.3", "time": 0.004 }
+    }
+  }
+}

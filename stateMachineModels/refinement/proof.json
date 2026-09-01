@@ -1,0 +1,32 @@
+{
+  "profile": [],
+  "proofs": {
+    "Refinement": {
+      "inv_manySteps_A": {
+        "tactic": "induction_pr",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.002 },
+          { "prover": "cvc5@1.0.3", "time": 0.003 }
+        ]
+      },
+      "inv_manySteps_C": {
+        "tactic": "induction_pr",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.003 },
+          { "prover": "cvc5@1.0.3", "time": 0.003 }
+        ]
+      },
+      "inv_reachable_A": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "inv_reachable_C": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "invariance_refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "manySteps_refinement": {
+        "tactic": "induction_pr",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.003 },
+          { "prover": "cvc5@1.0.3", "time": 0.004 }
+        ]
+      },
+      "reachable_refn": { "prover": "cvc5@1.0.3", "time": 0.004 }
+    }
+  }
+}

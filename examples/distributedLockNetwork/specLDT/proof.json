@@ -1,0 +1,6 @@
+{
+  "profile": [],
+  "proofs": {
+    "Spec": { "record_outputs": { "prover": "cvc5@1.0.3", "time": 0.016 } }
+  }
+}

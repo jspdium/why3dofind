@@ -1,0 +1,64 @@
+
+
+(* Abstract specification of a concurrent shared memory counter, assuming atomic updates
+ *) 
+
+module Counter
+
+  use export int.Int
+  use export map.Map
+  use export map.Const
+
+  type state = Start | Done
+  type thread 
+
+  (* System configurations
+   *)
+  type world = { pc : map thread state ; counter : int }
+
+
+  (* Inductive invariant 
+   *) 
+  predicate inv (w:world) = w.counter >= 0
+
+
+  (* System INIT 
+   *)
+  predicate initWorld_p (w:world) = w.pc = const Start /\ w.counter=0 
+  let ghost predicate initWorld (w:world) = initWorld_p w
+
+
+  (* System action
+   *)
+   
+  predicate trans_enbld (w:world) (t:thread) = 
+    w.pc[t] = Start
+
+  let ghost function trans (w:world) (t:thread) : world
+    requires { trans_enbld w t }
+    ensures  { inv w -> inv result }
+  = { pc = set (w.pc) t Done ; counter = w.counter+1 }
+
+
+  (* Transition relation
+   *)
+  inductive stepind world world =
+  | trans : forall w :world, t :thread.
+      trans_enbld w t -> stepind w  (trans w t )
+
+  let ghost predicate step (w1:world) (w2:world) = stepind w1 w2 
+
+
+  (* Proof of inductiveness, if desired
+   *)
+  (* clone export core.Inductiveness with *)
+  (*   type world, *)
+  (*   predicate inv, *)
+  (*   val step, *)
+  (*   val initWorld *)
+
+  (* lemma safety : forall w :world. reachable w -> inv w *)
+
+
+end
+

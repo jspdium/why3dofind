@@ -1,0 +1,28 @@
+{
+  "profile": [],
+  "proofs": {
+    "SelfStab_Biarray": {
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "Refinement.initWorldC'refn": {
+        "prover": "alt-ergo@2.4.2",
+        "time": 0.096
+      },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "Refinement.stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.008 },
+      "atLeastOneToken_lm": { "prover": "cvc5@1.0.3", "time": 0.029 },
+      "noTokens_fl": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "oneToken": { "prover": "cvc5@1.0.3", "time": 0.048 },
+      "state_lm": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "state_lm_2": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "trans": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "z3@4.11.2", "time": 0.358 },
+          { "prover": "z3@4.11.2", "time": 3.0 },
+          { "prover": "z3@4.11.2", "time": 2.3 },
+          { "prover": "cvc5@1.0.3", "time": 0.075 }
+        ]
+      }
+    }
+  }
+}

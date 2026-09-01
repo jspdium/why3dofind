@@ -1,0 +1,16 @@
+{
+  "profile": [],
+  "proofs": {
+    "TwoPhase": {
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.133 },
+      "consumer_step": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "producer_step": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "safety_by_refinement_1": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "step_TR_refinement": { "prover": "cvc5@1.0.3", "time": 0.008 }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "profile": [],
+  "proofs": {
+    "Peterson": {
+      "a1": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "a2": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "a3": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.015 },
+          { "prover": "cvc5@1.0.3", "time": 2.0 }
+        ]
+      },
+      "a4": { "prover": "cvc5@1.0.3", "time": 0.027 },
+      "cs": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.012 },
+          { "prover": "cvc5@1.0.3", "time": 0.24 }
+        ]
+      },
+      "eq": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "safety": { "prover": "cvc5@1.0.3", "time": 0.054 },
+      "safetyA": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.039 }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "profile": [],
+  "proofs": {
+    "Steps": {
+      "commit_step": { "prover": "alt-ergo@2.4.2", "time": 0.118 },
+      "consistent_reachable": { "prover": "cvc5@1.0.3", "time": 0.012 },
+      "indpred_manySteps": {
+        "tactic": "induction_pr",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.007 },
+          { "prover": "cvc5@1.0.3", "time": 0.009 }
+        ]
+      },
+      "indpred_reachable": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "indpred_step": { "prover": "alt-ergo@2.4.2", "time": 0.013 },
+      "remove_one": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "step_enabled": { "prover": "alt-ergo@2.4.2", "time": 0.004 },
+      "step_message": { "prover": "cvc5@1.0.3", "time": 0.036 }
+    },
+    "World": {}
+  }
+}

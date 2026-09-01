@@ -1,0 +1,21 @@
+{
+  "profile": [],
+  "proofs": {
+    "Consensus_orig": {
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.014 },
+      "next": { "prover": "cvc5@1.0.3", "time": 0.015 }
+    },
+    "Refn": {
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.041 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "Refinement.stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.061 }
+    },
+    "Refn_converse": {
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.016 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.094 }
+    }
+  }
+}

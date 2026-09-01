@@ -1,0 +1,52 @@
+{
+  "profile": [],
+  "proofs": {
+    "FourSlots": {
+      "a": { "prover": "cvc5@1.0.3", "time": 0.084 },
+      "am1": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.012 },
+          null,
+          { "prover": "cvc5@1.0.3", "time": 0.147 }
+        ]
+      },
+      "am2": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.011 },
+          null,
+          { "prover": "cvc5@1.0.3", "time": 0.02 }
+        ]
+      },
+      "ap1": { "prover": "cvc5@1.0.3", "time": 0.054 },
+      "ap2": { "prover": "cvc5@1.0.3", "time": 0.023 },
+      "b": { "prover": "cvc5@1.0.3", "time": 0.119 },
+      "bm1": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.016 },
+          null,
+          { "prover": "cvc5@1.0.3", "time": 0.096 }
+        ]
+      },
+      "bm2": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.011 },
+          null,
+          { "prover": "cvc5@1.0.3", "time": 0.021 }
+        ]
+      },
+      "bm3": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "bp1": { "prover": "cvc5@1.0.3", "time": 0.036 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "safetyAbs": { "prover": "cvc5@1.0.3", "time": 0.023 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.011 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.052 },
+      "world": { "prover": "cvc5@1.0.3", "time": 0.006 }
+    }
+  }
+}

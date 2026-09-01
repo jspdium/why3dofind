@@ -1,0 +1,13 @@
+{
+  "profile": [],
+  "proofs": {
+    "Counter": {
+      "correctness": { "prover": "cvc5@1.0.3", "time": 0.015 },
+      "count": { "prover": "cvc5@1.0.3", "time": 0.012 },
+      "count_lm": { "prover": "cvc5@1.0.3", "time": 0.124 },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.012 },
+      "step'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "trans": { "prover": "cvc5@1.0.3", "time": 0.012 }
+    }
+  }
+}

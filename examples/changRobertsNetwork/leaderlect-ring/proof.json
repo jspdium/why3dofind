@@ -1,0 +1,18 @@
+{
+  "profile": [],
+  "proofs": {
+    "LeaderElectRing": {
+      "Steps.case_msg'refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "Steps.case_node'refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "Steps.case_state'refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "Steps.handleMsg'refn": null,
+      "Steps.indpred'refn": { "prover": "alt-ergo@2.4.2", "time": 4.1 },
+      "btw_next_lm": { "prover": "cvc5@1.0.3", "time": 0.04 },
+      "initMsgs": { "prover": "cvc5@1.0.3", "time": 0.014 },
+      "initMsgs_fn": { "prover": "cvc5@1.0.3", "time": 2.1 },
+      "maxId_fn": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "next": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "uniqueLeader": { "prover": "alt-ergo@2.4.2", "time": 0.017 }
+    }
+  }
+}
