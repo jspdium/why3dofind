@@ -1,54 +1,52 @@
-# Why3-do
+# why3dofind
 
-[![Why3 proof replay][workflow-badge]][workflow]
+A WhyML library for reasoning about state machine specifications and
+distributed systems, using [why3find](https://why3find.readthedocs.io/)
+for proof management.
 
-[workflow]: https://github.com/haslab/why3do/actions/workflows/set-up-environment.yml
-[workflow-badge]: https://img.shields.io/github/actions/workflow/status/haslab/why3do/set-up-environment.yml?label=Proof%20Replay&logo=github
+## Structure
 
-A WhyML library for reasoning about state machine specifications and distributed systems
+```
+stateMachineModels/       Base library (inductive invariants, refinement)
+examples/counter/         Concurrent counter using a lock, by refinement
+examples/twoPhase/        Two-phase handshake protocol, by refinement
+examples/mutualExclusionConcurrent/
+                          Mutual exclusion algorithms (Peterson, Bakery, etc.)
+```
 
-## Library Modules
+Cross-file dependencies in why3find are resolved through installed
+packages, not folder loadpaths. Files that are depended upon by other
+files (`inductiveness.mlw`, `refinement.mlw`, `counter.mlw`,
+`counter_alt.mlw`, `alternate.mlw`, `mutexAbstractN.mlw`,
+`mutexAbstract.mlw`, `Peterson.mlw`) are registered as why3find packages.
 
-* [stateMachineModels](stateMachineModels): theories for
- inductive invariants and refinement mappings of  state machine
- specifications
-* [networkModels](networkModels): theories for reasoning about
-  distributed systems with different network semantics
+## Setup
 
-## List of Example Folders
+Requires [Why3](https://why3.lris.fr/) 1.8+,
+[why3find](https://why3find.readthedocs.io/) 1.3+, and at least one SMT
+prover (CVC5, Alt-Ergo, Z3). See `why3find.json` for the exact prover
+versions and tactics used.
 
-* [distributedLockNetwork](examples/distributedLockNetwork):
-  Distributed lock using a network model. Appears in ESOP'2022 Why3-do
-  paper
-* [changRobertsNetwork](examples/changRobertsNetwork): Chang-Roberts
-  leader election ring algorithm, using a network model. Appears in
-  ESOP'2022 Why3-do paper
-* [twoPhase](examples/twoPhase): Two-phase handshake protocol, refined
-  from abstract specification
-* [counter](examples/counter): Concurrent counter using a lock,
-  by refinement from abstract specification
-* [mutualExclusionConcurrent](examples/mutualExclusionConcurrent):
-  Mutual exclusion algorithms for concurrent processes, refined from
-  an abstract specification
-* [waitFreeRegister](examples/waitFreeRegister): Wait-free
-  implementation of a shared register using non-atomic registers
-* [leaderElection](examples/leaderElection/): Chang-Roberts leader
-  election ring algorithm, refined from an abstract specification
-* [mutualExclusionToken](examples/mutualExclusionToken): Closure property of Dijkstra's
-  self-stabilizing ring and bidirectional array systems, refined from
-  the same abstract specification
-* [paxos](examples/paxos): Paxos consensus algorithm. Two-step
-  refinement from a specification of the consensus problem
-* [paxosNoRefinement](examples/paxosNoRefinement): Paxos consensus
-  algorithm, earlier stand-alone formalization, not using refinement
+```sh
+eval $(opam env)
+./setup.sh          # install packages from repo sources (run once)
+why3find prove -r . # replay all proofs
+```
 
-## Example commands
+## Commands
 
-* `why3 ide examples/leaderElection/ChangRoberts.mlw -L examples/leaderElection -L stateMachineModels`: (executed in the top-level folder) launches the Why3 IDE with file `ChangRoberts.mlw`
-* `why3 replay examples/leaderElection/ChangRoberts -L
-  examples/leaderElection -L stateMachineModels`: replays the proof
-  session of the same example (assuming all the required SMT solvers are present in the local setup)
-* `why3 replay --smoke-detector=top examples/leaderElection/ChangRoberts -L
-  examples/leaderElection -L stateMachineModels`: runs inconsistency
-  detection on the proof session of the same example
+```sh
+why3find prove .              # update proof certificates
+why3find prove -r .           # replay proofs (no changes)
+why3find prove -f .           # force rebuild all proofs
+why3find prove -i file.mlw    # launch Why3 IDE on failed goals
+why3find prove --goals .      # per-goal breakdown
+```
 
+## How proofs are stored
+
+Each `.mlw` file has a matching `proof.json` certificate in a
+subdirectory of the same name (e.g. `counter.mlw` -> `counter/proof.json`).
+These are JSON files recording which prover (or tactic + prover
+combination) closes each goal. The `.why3find/` cache directory is
+gitignored.
