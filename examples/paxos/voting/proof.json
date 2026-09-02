@@ -2,38 +2,77 @@
   "profile": [],
   "proofs": {
     "Voting": {
-      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
-      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
-      "Refinement.refn'refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
-      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
-      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.026 },
+      "Refinement.initWorldA'refn": {
+        "tactic": "eliminate_definition_pred",
+        "children": [ { "prover": "cvc5@1.0.3", "time": 0.017 } ]
+      },
+      "Refinement.initWorldC'refn": {
+        "tactic": "eliminate_definition_pred",
+        "children": [ { "prover": "cvc5@1.0.3", "time": 0.017 } ]
+      },
+      "Refinement.refn'refn": {
+        "tactic": "eliminate_definition_pred",
+        "children": [ { "prover": "cvc5@1.0.3", "time": 0.008 } ]
+      },
+      "Refinement.stepA'refn": {
+        "tactic": "eliminate_definition_pred",
+        "children": [ { "prover": "cvc5@1.0.3", "time": 0.021 } ]
+      },
+      "Refinement.stepC'refn": {
+        "tactic": "eliminate_definition_pred",
+        "children": [ { "prover": "cvc5@1.0.3", "time": 0.043 } ]
+      },
       "increaseMaxBal": {
-        "tactic": "split_vc",
+        "tactic": "eliminate_definition_pred",
         "children": [
-          { "prover": "cvc5@1.0.3", "time": 0.01 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.821 },
-          { "prover": "z3@4.11.2", "time": 0.01 }
+          {
+            "tactic": "split_vc",
+            "children": [
+              { "prover": "cvc5@1.0.3", "time": 0.014 },
+              { "prover": "alt-ergo@2.4.2", "time": 0.579 },
+              { "prover": "cvc5@1.0.3", "time": 0.156 }
+            ]
+          }
         ]
       },
-      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.01 },
-      "refn": { "prover": "alt-ergo@2.4.2", "time": 0.005 },
-      "safety_by_refinement": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "initWorld": {
+        "tactic": "eliminate_definition_pred",
+        "children": [ { "prover": "cvc5@1.0.3", "time": 0.013 } ]
+      },
+      "refn": {
+        "tactic": "eliminate_definition_pred",
+        "children": [ { "prover": "alt-ergo@2.4.2", "time": 0.005 } ]
+      },
+      "safety_by_refinement": {
+        "tactic": "eliminate_definition_pred",
+        "children": [ { "prover": "cvc5@1.0.3", "time": 0.01 } ]
+      },
       "safety_lm": {
-        "tactic": "split_vc",
+        "tactic": "eliminate_definition_pred",
         "children": [
-          { "prover": "alt-ergo@2.4.2", "time": 0.007 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.656 }
+          {
+            "tactic": "split_vc",
+            "children": [
+              { "prover": "alt-ergo@2.4.2", "time": 0.012 },
+              { "prover": "alt-ergo@2.4.2", "time": 0.222 }
+            ]
+          }
         ]
       },
       "voteFor": {
-        "tactic": "split_vc",
+        "tactic": "eliminate_definition_pred",
         "children": [
-          { "prover": "alt-ergo@2.4.2", "time": 0.026 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.008 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.007 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.013 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.257 },
-          null
+          {
+            "tactic": "split_vc",
+            "children": [
+              { "prover": "alt-ergo@2.4.2", "time": 0.053 },
+              { "prover": "alt-ergo@2.4.2", "time": 0.016 },
+              { "prover": "alt-ergo@2.4.2", "time": 0.012 },
+              { "prover": "alt-ergo@2.4.2", "time": 0.137 },
+              null,
+              null
+            ]
+          }
         ]
       }
     }
