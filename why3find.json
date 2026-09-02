@@ -1,7 +1,7 @@
 {
   "fast": 0.2,
   "time": 90.0,
-  "depth": 4,
+  "depth": 8,
   "packages": [
     "counter_alt", "counter", "inductiveness.mlw", "refinement.mlw",
     "alternate", "mutexAbstractN", "mutexAbstract", "Peterson", "oneToken",
