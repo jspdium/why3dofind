@@ -1,0 +1,29 @@
+{
+  "profile": [],
+  "proofs": {
+    "LeaderElectMaxAliveDynamicFull": {
+      "crash": { "prover": "alt-ergo@2.4.2", "time": 0.018 },
+      "crashedProcessIsNotLeader": { "prover": "cvc5@1.0.3", "time": 0.041 },
+      "electMaxCreatesLeader": { "prover": "cvc5@1.0.3", "time": 0.044 },
+      "elect_max": { "prover": "cvc5@1.0.3", "time": 0.094 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "leaderIsAlive": { "prover": "cvc5@1.0.3", "time": 0.04 },
+      "leaderIsMaxAlive": { "prover": "alt-ergo@2.4.2", "time": 0.006 },
+      "maxAliveCanBeElectedWhenNoLeader": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.044
+      },
+      "no_alive_higher_C_equiv_max": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.016
+      },
+      "recover": { "prover": "alt-ergo@2.4.2", "time": 0.015 },
+      "step": { "prover": "alt-ergo@2.4.2", "time": 0.008 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.048 }
+    }
+  }
+}

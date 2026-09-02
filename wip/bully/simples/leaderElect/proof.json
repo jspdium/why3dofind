@@ -1,0 +1,10 @@
+{
+  "profile": [],
+  "proofs": {
+    "LeaderElect": {
+      "act": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "step'refn": { "prover": "cvc5@1.0.3", "time": 0.011 }
+    }
+  }
+}

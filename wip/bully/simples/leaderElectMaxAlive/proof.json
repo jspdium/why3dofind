@@ -1,0 +1,16 @@
+{
+  "profile": [],
+  "proofs": {
+    "LeaderElectMaxAlive": {
+      "act": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.011 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "leaderIsAlive": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "leaderIsMaxAlive": { "prover": "cvc5@1.0.3", "time": 0.012 },
+      "stepA'refn": { "prover": "alt-ergo@2.4.2", "time": 0.004 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.018 }
+    }
+  }
+}

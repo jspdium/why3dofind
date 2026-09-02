@@ -1,0 +1,119 @@
+(* Dynamic abstract leader election specification.
+
+   This is the most abstract machine used by the full dynamic Bully model.
+   It does not know about Bully messages, timeouts, heartbeats, or IDs.
+   It only records which processes are alive and which process is leader.
+*)
+
+module LeaderElectDynamicFull
+
+  use int.Int
+  use map.Map
+
+  type node = int
+
+  val constant n_nodes : int
+  axiom n_nodes_ax : 2 <= n_nodes
+
+  predicate valid (n:node) =
+    0 <= n < n_nodes
+
+  type world = {
+    aliveAbs : map node bool;
+    isLeader : map node bool;
+  }
+
+  predicate no_leader (w:world) =
+    forall n : node. valid n -> not w.isLeader[n]
+
+  predicate some_alive (w:world) =
+    exists n : node. valid n /\ w.aliveAbs[n]
+
+  predicate inv (w:world) =
+    (forall i : node.
+       valid i -> w.isLeader[i] -> w.aliveAbs[i])
+    /\
+    (forall i j : node.
+       valid i -> valid j ->
+       w.isLeader[i] -> w.isLeader[j] -> i = j)
+
+  predicate initWorld_p (w:world) =
+    (forall n : node. valid n -> w.aliveAbs[n] = true)
+    /\
+    (forall n : node. valid n -> w.isLeader[n] = false)
+
+  let ghost predicate initWorld (w:world)
+    ensures { result -> inv w }
+  = initWorld_p w
+
+  (* A process may fail dynamically.  If it was leader, it stops being leader. *)
+  predicate crash_enbld (w:world) (h:node) =
+    valid h /\ w.aliveAbs[h]
+
+  let ghost function crash (w:world) (h:node) : world
+    requires { crash_enbld w h }
+    ensures  { inv w -> inv result }
+  =
+    { aliveAbs = w.aliveAbs[h <- false];
+      isLeader = w.isLeader[h <- false] }
+
+  (* Recovery is abstract: the recovered process is alive but not elected by recovery. *)
+  predicate recover_enbld (w:world) (h:node) =
+    valid h /\ not w.aliveAbs[h]
+
+  let ghost function recover (w:world) (h:node) : world
+    requires { recover_enbld w h }
+    ensures  { inv w -> inv result }
+  =
+    { aliveAbs = w.aliveAbs[h <- true];
+      isLeader = w.isLeader }
+
+  (* Abstract election: if there is no leader, any alive process may become leader.
+     The max-alive restriction is introduced in the intermediate machine. *)
+  predicate elect_enbld (w:world) (h:node) =
+    valid h /\ w.aliveAbs[h] /\ no_leader w
+
+  let ghost function elect (w:world) (h:node) : world
+    requires { elect_enbld w h }
+    ensures  { inv w -> inv result }
+  =
+    { aliveAbs = w.aliveAbs;
+      isLeader = w.isLeader[h <- true] }
+
+  inductive stepind world world =
+  | step_crash : forall w : world, h : node.
+      crash_enbld w h -> stepind w (crash w h)
+  | step_recover : forall w : world, h : node.
+      recover_enbld w h -> stepind w (recover w h)
+  | step_elect : forall w : world, h : node.
+      elect_enbld w h -> stepind w (elect w h)
+
+  let ghost predicate step (w1:world) (w2:world)
+    ensures { result -> inv w1 -> inv w2 }
+  = stepind w1 w2
+
+  clone export inductiveness.Inductiveness with
+    type world,
+    predicate inv,
+    val step,
+    val initWorld
+
+  goal leaderIsAlive :
+    forall w : world, i : node.
+      reachable w -> valid i -> w.isLeader[i] -> w.aliveAbs[i]
+
+  goal uniqueLeader :
+    forall w : world, i j : node.
+      reachable w -> valid i -> valid j ->
+      w.isLeader[i] -> w.isLeader[j] -> i = j
+
+  goal crashedProcessIsNotLeaderAfterCrash :
+    forall w : world, h : node.
+      crash_enbld w h -> not (crash w h).isLeader[h]
+
+  goal ifNoLeaderAndAliveThenCanElectSomeone :
+    forall w : world.
+      no_leader w -> some_alive w ->
+      exists h : node. elect_enbld w h
+
+end

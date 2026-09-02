@@ -1,0 +1,122 @@
+(* Abstract specification of leader election solved by choosing
+   the alive process with maximum id.
+
+   This module is not the Bully algorithm itself.
+   It is an abstract machine that the concrete Bully model can refine.
+*)
+
+module LeaderElectMaxAlive
+
+  use int.Int
+  use map.Map
+
+  use leaderElect.LeaderElect
+
+  (* Nodes have fixed, unique ids.  The type node and the constant
+     n_nodes are imported from LeaderElect. *)
+  type id = int
+
+  val function id node : id
+
+  axiom uniqueIds :
+    forall i j : node.
+      0 <= i < n_nodes -> 0 <= j < n_nodes ->
+      (id i = id j <-> i = j)
+
+  predicate valid (n:node) =
+    0 <= n < n_nodes
+
+  (* Fixed failure model: during one execution, a process is either
+     alive or crashed. *)
+  val function alive node : bool
+
+  (* The maximum alive node. *)
+  val constant maxAlive_global : node
+
+  axiom maxAlive_global_ax :
+    valid maxAlive_global /\
+    alive maxAlive_global /\
+    forall n : node.
+      valid n -> alive n -> n <> maxAlive_global ->
+      id n < id maxAlive_global
+
+  (* Helper fact used by the Bully model.
+     It follows from maxAlive_global_ax, but keeping it as an axiom
+     makes the automatic proofs simpler. *)
+  axiom no_alive_higher_is_max :
+    forall h : node.
+      valid h -> alive h ->
+      (forall k : node. valid k -> alive k -> not (id k > id h)) ->
+      h = maxAlive_global
+
+  (* Abstract configurations. *)
+  type world = {
+    isMaxAlive : map node bool
+  }
+
+  (* Refinement map to the even more abstract LeaderElect specification. *)
+  let function refn (w:world) : LeaderElect.world =
+    { isLeader = w.isMaxAlive }
+
+  (* Inductive invariant: only maxAlive_global can be marked as leader. *)
+  predicate inv (w:world) =
+    forall i : node.
+      valid i -> w.isMaxAlive[i] -> i = maxAlive_global
+
+  (* Initial state: nobody is leader. *)
+  predicate initWorld_p (w:world) =
+    forall n : node. valid n -> w.isMaxAlive[n] = false
+
+  let ghost predicate initWorld (w:world)
+    ensures { result -> inv w }
+    ensures { result -> LeaderElect.initWorld (refn w) }
+  = initWorld_p w
+
+  (* Abstract action: the maximum alive node becomes leader. *)
+  predicate act_enbld (w:world) (h:node) =
+    valid h /\ alive h /\ h = maxAlive_global
+
+  let ghost function act (w:world) (h:node) : world
+    requires { act_enbld w h }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w
+                     \/ LeaderElect.stepind (refn w) (refn result) }
+  =
+    { isMaxAlive = w.isMaxAlive[h <- true] }
+
+  inductive stepind world world =
+  | step_msg : forall w : world, n : node.
+      act_enbld w n -> stepind w (act w n)
+
+  let ghost predicate step (w1:world) (w2:world) =
+    stepind w1 w2
+
+  (* Proof that this abstract max-alive election machine refines
+     the simpler LeaderElect machine. *)
+  clone export refinement.Refinement with
+    type worldC = world,
+    type worldA = LeaderElect.world,
+    val refn = refn,
+    predicate invC = inv,
+    predicate invA = LeaderElect.inv,
+    val initWorldC = initWorld,
+    val initWorldA = LeaderElect.initWorld,
+    val stepC = step,
+    val stepA = LeaderElect.step
+
+  (* Safety goals. *)
+
+  goal leaderIsMaxAlive :
+    forall w : world, i : node.
+      reachableC w -> valid i -> w.isMaxAlive[i] -> i = maxAlive_global
+
+  goal leaderIsAlive :
+    forall w : world, i : node.
+      reachableC w -> valid i -> w.isMaxAlive[i] -> alive i
+
+  goal uniqueLeader :
+    forall w : world, i j : node.
+      reachableC w -> valid i -> valid j ->
+      w.isMaxAlive[i] -> w.isMaxAlive[j] -> i = j
+
+end

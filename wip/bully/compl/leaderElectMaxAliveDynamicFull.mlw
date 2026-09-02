@@ -1,0 +1,155 @@
+(* Dynamic max-alive abstract leader election machine.
+
+   This machine refines LeaderElectDynamicFull by restricting election to
+   the alive process with greatest ID in the current state.
+*)
+
+module LeaderElectMaxAliveDynamicFull
+
+  use int.Int
+  use map.Map
+
+  use leaderElectDynamicFull.LeaderElectDynamicFull
+
+  type id = int
+
+  val function id node : id
+
+  axiom uniqueIds :
+    forall i j : node.
+      valid i -> valid j ->
+      (id i = id j <-> i = j)
+
+  (* Same shape as LeaderElectDynamicFull.world, but the invariant is stronger. *)
+  type world = {
+    aliveMax   : map node bool;
+    isMaxAlive : map node bool;
+  }
+
+  let function refn (w:world) : LeaderElectDynamicFull.world =
+    { aliveAbs = w.aliveMax; isLeader = w.isMaxAlive }
+
+  predicate is_max_alive_C (w:world) (h:node) =
+    valid h /\ w.aliveMax[h] /\
+    forall k : node. valid k -> w.aliveMax[k] -> id k <= id h
+
+  predicate no_alive_higher_C (w:world) (h:node) =
+    valid h /\ w.aliveMax[h] /\
+    forall k : node. valid k -> w.aliveMax[k] -> not (id h < id k)
+
+  lemma no_alive_higher_C_equiv_max :
+    forall w : world, h : node.
+      no_alive_higher_C w h -> is_max_alive_C w h
+
+  predicate no_leader_C (w:world) =
+    forall n : node. valid n -> not w.isMaxAlive[n]
+
+  predicate some_alive_C (w:world) =
+    exists n : node. valid n /\ w.aliveMax[n]
+
+  predicate inv (w:world) =
+    (forall i : node.
+       valid i -> w.isMaxAlive[i] -> is_max_alive_C w i)
+    /\
+    (forall i j : node.
+       valid i -> valid j ->
+       w.isMaxAlive[i] -> w.isMaxAlive[j] -> i = j)
+
+  predicate initWorld_p (w:world) =
+    (forall n : node. valid n -> w.aliveMax[n] = true)
+    /\
+    (forall n : node. valid n -> w.isMaxAlive[n] = false)
+
+  let ghost predicate initWorld (w:world)
+    ensures { result -> inv w }
+    ensures { result -> LeaderElectDynamicFull.initWorld (refn w) }
+  = initWorld_p w
+
+  predicate crash_enbld (w:world) (h:node) =
+    valid h /\ w.aliveMax[h]
+
+  let ghost function crash (w:world) (h:node) : world
+    requires { crash_enbld w h }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> LeaderElectDynamicFull.stepind (refn w) (refn result) }
+  =
+    { aliveMax   = w.aliveMax[h <- false];
+      isMaxAlive = w.isMaxAlive[h <- false] }
+
+  (* Conservative recovery: if a leader already exists, a recovering process
+     must have a lower ID than that leader.  If there is no leader, recovery is
+     always allowed and a later election can choose the new maximum. *)
+  predicate recover_enbld (w:world) (h:node) =
+    valid h /\ not w.aliveMax[h] /\
+    (forall l : node. valid l -> w.isMaxAlive[l] -> id h < id l)
+
+  let ghost function recover (w:world) (h:node) : world
+    requires { recover_enbld w h }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> LeaderElectDynamicFull.stepind (refn w) (refn result) }
+  =
+    { aliveMax   = w.aliveMax[h <- true];
+      isMaxAlive = w.isMaxAlive }
+
+  predicate elect_max_enbld (w:world) (h:node) =
+    is_max_alive_C w h /\ no_leader_C w
+
+  let ghost function elect_max (w:world) (h:node) : world
+    requires { elect_max_enbld w h }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> LeaderElectDynamicFull.stepind (refn w) (refn result) }
+  =
+    { aliveMax   = w.aliveMax;
+      isMaxAlive = w.isMaxAlive[h <- true] }
+
+  inductive stepind world world =
+  | step_crash : forall w : world, h : node.
+      crash_enbld w h -> stepind w (crash w h)
+  | step_recover : forall w : world, h : node.
+      recover_enbld w h -> stepind w (recover w h)
+  | step_elect_max : forall w : world, h : node.
+      elect_max_enbld w h -> stepind w (elect_max w h)
+
+  let ghost predicate step (w1:world) (w2:world)
+    ensures { result -> inv w1 -> inv w2 }
+    ensures { result -> inv w1 -> refn w1 = refn w2
+                              \/ LeaderElectDynamicFull.step (refn w1) (refn w2) }
+  = stepind w1 w2
+
+  clone export refinement.Refinement with
+    type worldC = world,
+    type worldA = LeaderElectDynamicFull.world,
+    val refn = refn,
+    predicate invC = inv,
+    predicate invA = LeaderElectDynamicFull.inv,
+    val initWorldC = initWorld,
+    val initWorldA = LeaderElectDynamicFull.initWorld,
+    val stepC = step,
+    val stepA = LeaderElectDynamicFull.step
+
+  goal leaderIsAlive :
+    forall w : world, i : node.
+      reachableC w -> valid i -> w.isMaxAlive[i] -> w.aliveMax[i]
+
+  goal leaderIsMaxAlive :
+    forall w : world, i : node.
+      reachableC w -> valid i -> w.isMaxAlive[i] -> is_max_alive_C w i
+
+  goal uniqueLeader :
+    forall w : world, i j : node.
+      reachableC w -> valid i -> valid j ->
+      w.isMaxAlive[i] -> w.isMaxAlive[j] -> i = j
+
+  goal crashedProcessIsNotLeader :
+    forall w : world, h : node.
+      crash_enbld w h -> not (crash w h).isMaxAlive[h]
+
+  goal electMaxCreatesLeader :
+    forall w : world, h : node.
+      elect_max_enbld w h -> (elect_max w h).isMaxAlive[h]
+
+  goal maxAliveCanBeElectedWhenNoLeader :
+    forall w : world, h : node.
+      is_max_alive_C w h -> no_leader_C w -> elect_max_enbld w h
+
+end

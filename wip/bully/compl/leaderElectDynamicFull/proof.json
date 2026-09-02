@@ -1,0 +1,24 @@
+{
+  "profile": [],
+  "proofs": {
+    "LeaderElectDynamicFull": {
+      "crash": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "crashedProcessIsNotLeaderAfterCrash": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.014
+      },
+      "elect": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "ifNoLeaderAndAliveThenCanElectSomeone": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.016
+      },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
+      "leaderIsAlive": { "prover": "cvc5@1.0.3", "time": 0.014 },
+      "recover": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "step": { "prover": "alt-ergo@2.4.2", "time": 0.005 },
+      "step'refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
+      "uniqueLeader": { "prover": "alt-ergo@2.4.2", "time": 0.004 }
+    }
+  }
+}

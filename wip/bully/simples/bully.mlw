@@ -1,0 +1,345 @@
+(* Concrete model of the normal Bully leader election algorithm.
+
+   This model focuses on safety properties:
+     1. every leader is alive;
+     2. every leader is the alive process with maximum id;
+     3. there is at most one leader.
+
+   Simplifications:
+     - failures are fixed through the predicate alive;
+     - timeout is modeled abstractly by no_alive_higher;
+     - messages are never lost;
+     - for safety, messages are kept in the network list instead of being
+       removed when received. This over-approximates executions and is safe
+       for the properties proved here.
+*)
+
+module Bully
+
+  use int.Int
+  use map.Map
+  use list.List
+  use list.Mem
+
+  use leaderElect.LeaderElect
+  use leaderElectMaxAlive.LeaderElectMaxAlive
+
+  (* Local control state of each process. *)
+  type status =
+    | Idle
+    | Electing
+    | Waiting
+    | Normal
+
+  (* Bully messages. *)
+  type msg_kind =
+    | Election
+    | Ok
+    | Coordinator
+
+  type packet = {
+    src  : node;
+    dst  : node;
+    kind : msg_kind
+  }
+
+  (* Concrete configurations. *)
+  type world = {
+    st       : map node status;
+    leader : map node bool;
+    net      : list packet
+  }
+
+  (* Refinement map to the abstract max-alive leader election machine. *)
+  let function refn (w:world) : LeaderElectMaxAlive.world =
+    { isMaxAlive = w.leader }
+
+  (* Final refinement map to the most abstract LeaderElect specification. *)
+  let function fullrefn (w:world) : LeaderElect.world =
+    LeaderElectMaxAlive.refn (refn w)
+
+  (* There is no active process with id higher than h.
+     This abstracts the timeout part of Bully. *)
+  predicate no_alive_higher (h:node) =
+    valid h /\ alive h /\
+    forall k : node. valid k -> alive k -> not (id k > id h)
+
+  (* Well-formed messages of the Bully protocol. *)
+  predicate ok_packet (p:packet) =
+    valid p.src /\ valid p.dst /\
+    alive p.src /\ alive p.dst /\
+    match p.kind with
+    | Election ->
+        id p.src < id p.dst
+    | Ok ->
+        id p.src > id p.dst
+    | Coordinator ->
+        p.src = maxAlive_global /\ id p.dst < id p.src
+    end
+
+  (* Inductive invariant.
+     The first part gives the main safety argument.
+     The second part is needed to preserve safety through message actions. *)
+  predicate inv (w:world) =
+    (forall i : node.
+       valid i -> w.leader[i] -> i = maxAlive_global)
+    /\
+    (forall p : packet.
+       mem p w.net -> ok_packet p)
+
+  (* Initial state: all processes start idle, nobody is leader,
+     and the network is empty. *)
+  predicate initWorld_p (w:world) =
+    (forall n : node. valid n -> w.st[n] = Idle)
+    /\
+    (forall n : node. valid n -> w.leader[n] = false)
+    /\
+    w.net = Nil
+
+  let ghost predicate initWorld (w:world)
+    ensures { result -> inv w }
+    ensures { result -> LeaderElectMaxAlive.initWorld (refn w) }
+  = initWorld_p w
+
+  (* Action 1: a process starts an election. *)
+  predicate start_enbld (w:world) (h:node) =
+    valid h /\ alive h /\ w.st[h] = Idle
+
+  let ghost function start_election (w:world) (h:node) : world
+    requires { start_enbld w h }
+    ensures  { inv w -> inv result }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> refn result = refn w
+                     \/ LeaderElectMaxAlive.stepind (refn w) (refn result) }
+  =
+    { st = w.st[h <- Electing];
+      leader = w.leader;
+      net = w.net }
+
+  (* Action 2: an electing process sends Election to a higher-id process. *)
+  predicate send_election_enbld (w:world) (h d:node) =
+    valid h /\ valid d /\
+    alive h /\ alive d /\
+    w.st[h] = Electing /\
+    id h < id d
+
+  let ghost function send_election (w:world) (h d:node) : world
+    requires { send_election_enbld w h d }
+    ensures  { inv w -> inv result }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> refn result = refn w
+                     \/ LeaderElectMaxAlive.stepind (refn w) (refn result) }
+  =
+    { st = w.st;
+      leader = w.leader;
+      net = Cons { src = h; dst = d; kind = Election } w.net }
+
+  (* Action 3: a higher-id process receives Election and replies Ok. *)
+  predicate recv_election_enbld (w:world) (h:node) (p:packet) =
+    valid h /\ alive h /\
+    mem p w.net /\
+    p.dst = h /\
+    p.kind = Election
+
+  let ghost function recv_election (w:world) (h:node) (p:packet) : world
+    requires { recv_election_enbld w h p }
+    ensures  { inv w -> inv result }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> refn result = refn w
+                     \/ LeaderElectMaxAlive.stepind (refn w) (refn result) }
+  =
+    { st = w.st[h <- Electing];
+      leader = w.leader;
+      net = Cons { src = h; dst = p.src; kind = Ok } w.net }
+
+  (* Action 4: a process receives Ok and waits for the higher-id process
+     to finish the election. *)
+  predicate recv_ok_enbld (w:world) (h:node) (p:packet) =
+    valid h /\ alive h /\
+    mem p w.net /\
+    p.dst = h /\
+    p.kind = Ok
+
+  let ghost function recv_ok (w:world) (h:node) (p:packet) : world
+    requires { recv_ok_enbld w h p }
+    ensures  { inv w -> inv result }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> refn result = refn w
+                     \/ LeaderElectMaxAlive.stepind (refn w) (refn result) }
+  =
+    { st = w.st[h <- Waiting];
+      leader = w.leader;
+      net = w.net }
+
+  (* Action 5: timeout/no higher alive process.
+     This is the only action that can create a leader. *)
+  predicate become_leader_enbld (w:world) (h:node) =
+    valid h /\ alive h /\
+    w.st[h] = Electing /\
+    no_alive_higher h
+
+  let ghost function become_leader (w:world) (h:node) : world
+    requires { become_leader_enbld w h }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> LeaderElectMaxAlive.stepind (refn w) (refn result) }
+    ensures  { inv w -> refn result = refn w
+                     \/ LeaderElectMaxAlive.stepind (refn w) (refn result) }
+  =
+    { st = w.st[h <- Normal];
+      leader = w.leader[h <- true];
+      net = w.net }
+
+  (* Action 6: the leader announces itself as coordinator. *)
+  predicate send_coord_enbld (w:world) (h d:node) =
+    valid h /\ valid d /\
+    alive h /\ alive d /\
+    w.leader[h] /\
+    id d < id h
+
+  let ghost function send_coord (w:world) (h d:node) : world
+    requires { send_coord_enbld w h d }
+    ensures  { inv w -> inv result }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> refn result = refn w
+                     \/ LeaderElectMaxAlive.stepind (refn w) (refn result) }
+  =
+    { st = w.st;
+      leader = w.leader;
+      net = Cons { src = h; dst = d; kind = Coordinator } w.net }
+
+  (* Action 7: a process receives the Coordinator announcement. *)
+  predicate recv_coord_enbld (w:world) (h:node) (p:packet) =
+    valid h /\ alive h /\
+    mem p w.net /\
+    p.dst = h /\
+    p.kind = Coordinator
+
+  let ghost function recv_coord (w:world) (h:node) (p:packet) : world
+    requires { recv_coord_enbld w h p }
+    ensures  { inv w -> inv result }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> refn result = refn w
+                     \/ LeaderElectMaxAlive.stepind (refn w) (refn result) }
+  =
+    { st = w.st[h <- Normal];
+      leader = w.leader;
+      net = w.net }
+
+  (* Concrete transition relation. *)
+  inductive stepind world world =
+  | step_start : forall w : world, h : node.
+      start_enbld w h ->
+      stepind w (start_election w h)
+
+  | step_send_election : forall w : world, h d : node.
+      send_election_enbld w h d ->
+      stepind w (send_election w h d)
+
+  | step_recv_election : forall w : world, h : node, p : packet.
+      recv_election_enbld w h p ->
+      stepind w (recv_election w h p)
+
+  | step_recv_ok : forall w : world, h : node, p : packet.
+      recv_ok_enbld w h p ->
+      stepind w (recv_ok w h p)
+
+  | step_become_leader : forall w : world, h : node.
+      become_leader_enbld w h ->
+      stepind w (become_leader w h)
+
+  | step_send_coord : forall w : world, h d : node.
+      send_coord_enbld w h d ->
+      stepind w (send_coord w h d)
+
+  | step_recv_coord : forall w : world, h : node, p : packet.
+      recv_coord_enbld w h p ->
+      stepind w (recv_coord w h p)
+
+  let ghost predicate step (w1:world) (w2:world)
+    ensures { result -> inv w1 -> inv w2 }
+    ensures { result -> inv w1 -> refn w1 = refn w2
+                                \/ LeaderElectMaxAlive.step (refn w1) (refn w2) }
+  =
+    stepind w1 w2
+
+  (* Direct proof of inductiveness for the concrete Bully invariant. *)
+  clone inductiveness.Inductiveness with
+    type world = world,
+    predicate inv = inv,
+    val initWorld = initWorld,
+    val step = step
+
+  (* Proof that Bully refines the abstract max-alive election machine. *)
+  clone refinement.Refinement with
+    type worldC = world,
+    type worldA = LeaderElectMaxAlive.world,
+    val refn = refn,
+    predicate invC = inv,
+    predicate invA = LeaderElectMaxAlive.inv,
+    val initWorldC = initWorld,
+    val initWorldA = LeaderElectMaxAlive.initWorld,
+    val stepC = step,
+    val stepA = LeaderElectMaxAlive.step
+
+  (* Safety properties. *)
+
+  goal leaderIsAlive :
+    forall w : world, i : node.
+      reachableC w -> valid i -> w.leader[i] -> alive i
+
+  goal leaderIsMaxAlive :
+    forall w : world, i : node.
+      reachableC w -> valid i -> w.leader[i] -> i = maxAlive_global
+
+  goal uniqueLeader :
+    forall w : world, i j : node.
+      reachableC w -> valid i -> valid j ->
+      w.leader[i] -> w.leader[j] -> i = j
+
+  goal uniqueLeader_AbstractView :
+    forall w : world, i j : node.
+      reachableC w -> valid i -> valid j ->
+      (fullrefn w).isLeader[i] -> (fullrefn w).isLeader[j] -> i = j
+      
+  goal allMessagesWellFormed :
+    forall w : world, p : packet.
+      reachableC w ->
+      mem p w.net ->
+      ok_packet p
+      
+  (*Liveness properties. *)
+
+  goal onlyMaxAliveCanBecomeLeader :
+    forall w : world, h : node.
+      become_leader_enbld w h ->
+      h = maxAlive_global
+
+
+  lemma maxAliveHasNoAliveHigher :
+    no_alive_higher maxAlive_global
+
+  goal maxAliveCanBecomeLeader :
+    forall w : world.
+      w.st[maxAlive_global] = Electing ->
+      become_leader_enbld w maxAlive_global
+
+  goal maxAliveBecomeLeaderCreatesLeader :
+    forall w : world.
+      become_leader_enbld w maxAlive_global ->
+      (become_leader w maxAlive_global).leader[maxAlive_global]
+
+  goal maxAliveLeaderCanNotifyOtherAlive :
+    forall w : world, d : node.
+      valid d ->
+      alive d ->
+      d <> maxAlive_global ->
+      w.leader[maxAlive_global] ->
+      send_coord_enbld w maxAlive_global d
+
+  goal maxAliveElectingHasLeaderSuccessor :
+    forall w : world.
+      w.st[maxAlive_global] = Electing ->
+      exists w' : world.
+        step w w' /\ w'.leader[maxAlive_global]
+
+end

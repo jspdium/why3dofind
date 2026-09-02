@@ -1,0 +1,48 @@
+{
+  "profile": [],
+  "proofs": {
+    "Bully": {
+      "Inductiveness.initWorld'refn": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.008
+      },
+      "Inductiveness.step'refn": { "prover": "cvc5@1.0.3", "time": 0.011 },
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.012 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.027 },
+      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "allMessagesWellFormed": { "prover": "cvc5@1.0.3", "time": 0.029 },
+      "become_leader": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.02 },
+      "leaderIsAlive": { "prover": "cvc5@1.0.3", "time": 0.03 },
+      "leaderIsMaxAlive": { "prover": "cvc5@1.0.3", "time": 0.031 },
+      "maxAliveBecomeLeaderCreatesLeader": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.03
+      },
+      "maxAliveCanBecomeLeader": { "prover": "cvc5@1.0.3", "time": 0.016 },
+      "maxAliveElectingHasLeaderSuccessor": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.035
+      },
+      "maxAliveHasNoAliveHigher": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "maxAliveLeaderCanNotifyOtherAlive": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.031
+      },
+      "onlyMaxAliveCanBecomeLeader": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.033
+      },
+      "recv_coord": { "prover": "cvc5@1.0.3", "time": 0.016 },
+      "recv_election": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "recv_ok": { "prover": "cvc5@1.0.3", "time": 0.015 },
+      "send_coord": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "send_election": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "start_election": { "prover": "cvc5@1.0.3", "time": 0.015 },
+      "step": { "prover": "cvc5@1.0.3", "time": 0.073 },
+      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "uniqueLeader_AbstractView": { "prover": "cvc5@1.0.3", "time": 0.035 }
+    }
+  }
+}

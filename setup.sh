@@ -45,5 +45,10 @@ install_pkg slotsAbstract   examples/waitFreeRegister/slotsAbstract.mlw
 install_pkg consensus       examples/paxos/consensus.mlw
 install_pkg voting          examples/paxos/voting.mlw
 
+# wip/bully (student project)
+install_pkg leaderElectMaxAlive              wip/bully/simples/leaderElectMaxAlive.mlw
+install_pkg leaderElectDynamicFull           wip/bully/compl/leaderElectDynamicFull.mlw
+install_pkg leaderElectMaxAliveDynamicFull   wip/bully/compl/leaderElectMaxAliveDynamicFull.mlw
+
 echo "done. packages installed:"
 why3find list
