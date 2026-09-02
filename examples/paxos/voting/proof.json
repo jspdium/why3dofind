@@ -33,7 +33,10 @@
           { "prover": "alt-ergo@2.4.2", "time": 0.007 },
           { "prover": "alt-ergo@2.4.2", "time": 0.013 },
           { "prover": "alt-ergo@2.4.2", "time": 0.249 },
-          null
+          {
+            "tactic": "inline_goal",
+            "children": [ { "prover": "z3@5.1.0", "time": 0.028 } ]
+          }
         ]
       }
     }

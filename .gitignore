@@ -4,5 +4,9 @@
 # why3find proof cache
 .why3find/
 
+# why3 session files (legacy, not needed with why3find)
+why3session.xml
+why3shapes.gz
+
 # backup files
 *.bak
