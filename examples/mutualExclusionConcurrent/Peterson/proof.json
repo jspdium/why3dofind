@@ -2,12 +2,12 @@
   "profile": [],
   "proofs": {
     "Peterson": {
-      "a1": { "prover": "cvc5@1.0.3", "time": 0.024 },
-      "a2": { "prover": "cvc5@1.0.3", "time": 0.03 },
+      "a1": { "prover": "cvc5@1.0.3", "time": 0.025 },
+      "a2": { "prover": "cvc5@1.0.3", "time": 0.033 },
       "a3": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "cvc5@1.0.3", "time": 0.016 },
+          { "prover": "cvc5@1.0.3", "time": 0.017 },
           { "prover": "cvc5@1.0.3", "time": 1.8 }
         ]
       },
@@ -15,16 +15,16 @@
       "cs": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "cvc5@1.0.3", "time": 0.012 },
-          { "prover": "cvc5@1.0.3", "time": 0.233 }
+          { "prover": "cvc5@1.0.3", "time": 0.013 },
+          { "prover": "cvc5@1.0.3", "time": 0.229 }
         ]
       },
-      "eq": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "eq": { "prover": "cvc5@1.0.3", "time": 0.005 },
       "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
-      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.031 },
-      "refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
-      "safety": { "prover": "cvc5@1.0.3", "time": 0.052 },
-      "safetyA": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "safety": { "prover": "cvc5@1.0.3", "time": 0.057 },
+      "safetyA": { "prover": "cvc5@1.0.3", "time": 0.021 },
       "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
       "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.037 }
     }

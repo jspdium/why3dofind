@@ -5,37 +5,37 @@
       "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
       "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
       "Refinement.refn'refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
-      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
-      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.025 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.028 },
       "increaseMaxBal": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "cvc5@1.0.3", "time": 0.01 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.78 },
-          { "prover": "z3@4.11.2", "time": 0.01 }
+          { "prover": "cvc5@1.0.3", "time": 0.012 },
+          { "prover": "alt-ergo@2.4.2", "time": 0.896 },
+          { "prover": "z3@5.1.0", "time": 0.007 }
         ]
       },
-      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.011 },
       "refn": { "prover": "alt-ergo@2.4.2", "time": 0.004 },
-      "safety_by_refinement": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "safety_by_refinement": { "prover": "cvc5@1.0.3", "time": 0.009 },
       "safety_lm": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "alt-ergo@2.4.2", "time": 0.007 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.615 }
+          { "prover": "alt-ergo@2.4.2", "time": 0.008 },
+          { "prover": "alt-ergo@2.4.2", "time": 0.647 }
         ]
       },
       "voteFor": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "alt-ergo@2.4.2", "time": 0.025 },
+          { "prover": "alt-ergo@2.4.2", "time": 0.028 },
+          { "prover": "alt-ergo@2.4.2", "time": 0.01 },
           { "prover": "alt-ergo@2.4.2", "time": 0.008 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.007 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.013 },
-          { "prover": "alt-ergo@2.4.2", "time": 0.249 },
+          { "prover": "alt-ergo@2.4.2", "time": 0.014 },
+          { "prover": "alt-ergo@2.4.2", "time": 0.271 },
           {
             "tactic": "inline_goal",
-            "children": [ { "prover": "z3@5.1.0", "time": 0.028 } ]
+            "children": [ { "prover": "z3@5.1.0", "time": 0.034 } ]
           }
         ]
       }

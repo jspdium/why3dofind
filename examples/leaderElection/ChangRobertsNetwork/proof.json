@@ -2,17 +2,17 @@
   "profile": [],
   "proofs": {
     "ChangRobertsNetwork": {
-      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.019 },
-      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.089 },
-      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.09 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
       "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.038 },
-      "act": { "prover": "cvc5@1.0.3", "time": 0.575 },
+      "act": { "prover": "z3@5.1.0", "time": 0.027 },
       "initMsgs_fn": { "prover": "cvc5@1.0.3", "time": 0.042 },
       "initWorld": { "prover": "cvc5@1.0.3", "time": 0.031 },
       "next": { "prover": "alt-ergo@2.4.2", "time": 0.02 },
       "pred": { "prover": "alt-ergo@2.4.2", "time": 0.019 },
       "remove_one": { "prover": "cvc5@1.0.3", "time": 0.015 },
-      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.047 }
+      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.046 }
     }
   }
 }

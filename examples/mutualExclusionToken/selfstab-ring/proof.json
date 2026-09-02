@@ -3,7 +3,7 @@
   "proofs": {
     "SelfStab_Ring": {
       "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.013 },
-      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.076 },
+      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.078 },
       "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.016 },
       "Refinement.stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.007 },
       "first_last_fl": { "prover": "cvc5@1.0.3", "time": 0.016 },
@@ -12,10 +12,10 @@
       "trans": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "z3@4.11.2", "time": 0.021 },
-          { "prover": "z3@4.11.2", "time": 0.022 },
-          { "prover": "z3@4.11.2", "time": 0.782 },
-          { "prover": "cvc5@1.0.3", "time": 0.073 }
+          { "prover": "z3@5.1.0", "time": 0.013 },
+          { "prover": "z3@5.1.0", "time": 0.029 },
+          { "prover": "z3@5.1.0", "time": 0.636 },
+          { "prover": "cvc5@1.0.3", "time": 0.086 }
         ]
       }
     }

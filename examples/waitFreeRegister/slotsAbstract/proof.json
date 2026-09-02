@@ -2,7 +2,7 @@
   "profile": [],
   "proofs": {
     "SlotsAbstract": {
-      "cs": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "cs": { "prover": "cvc5@1.0.3", "time": 0.003 },
       "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.003 },
       "rd": { "prover": "cvc5@1.0.3", "time": 0.003 },
       "safety": { "prover": "cvc5@1.0.3", "time": 0.009 },

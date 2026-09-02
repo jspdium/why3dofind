@@ -3,21 +3,21 @@
   "proofs": {
     "SimpleMutex": {
       "a": { "prover": "cvc5@1.0.3", "time": 0.022 },
-      "b": { "prover": "cvc5@1.0.3", "time": 0.063 },
+      "b": { "prover": "cvc5@1.0.3", "time": 0.064 },
       "cs": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "cvc5@1.0.3", "time": 0.011 },
+          { "prover": "cvc5@1.0.3", "time": 0.012 },
           { "prover": "cvc5@1.0.3", "time": 1.6 }
         ]
       },
       "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
-      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.018 },
-      "refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
       "safety": { "prover": "cvc5@1.0.3", "time": 0.058 },
-      "safetyA": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "safetyA": { "prover": "cvc5@1.0.3", "time": 0.021 },
       "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
-      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.019 }
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.021 }
     }
   }
 }

@@ -2,13 +2,13 @@
   "profile": [],
   "proofs": {
     "OneToken": {
-      "atLeastOneToken": { "prover": "cvc5@1.0.3", "time": 0.007 },
-      "atMostOneToken": { "prover": "cvc5@1.0.3", "time": 0.061 },
-      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.012 },
-      "noTokens": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "atLeastOneToken": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "atMostOneToken": { "prover": "cvc5@1.0.3", "time": 0.056 },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.011 },
+      "noTokens": { "prover": "cvc5@1.0.3", "time": 0.006 },
       "oneToken": { "prover": "cvc5@1.0.3", "time": 0.007 },
       "step'refn": { "prover": "cvc5@1.0.3", "time": 0.015 },
-      "trans": { "prover": "z3@4.11.2", "time": 0.008 }
+      "trans": { "prover": "z3@5.1.0", "time": 0.005 }
     }
   }
 }

@@ -4,7 +4,7 @@
     "CounterImpl": {
       "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.003 },
       "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
-      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.005 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
       "Refinement.stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.01 },
       "initWorld": { "prover": "cvc5@1.0.3", "time": 0.009 },
       "refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
