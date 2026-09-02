@@ -1,0 +1,302 @@
+module RaftTerms
+
+    use int.Int
+    use list.List
+    use list.Append
+    use list.Mem
+    use list.Length
+    use list.HdTlNoOpt
+    use option.Option
+    use map.Map
+
+    type node = int
+    val constant n_nodes : int
+    type node_state = Follower | Candidate | Leader
+    
+    type msg_type = RequestVoteRequest | RequestVoteResponse
+
+    type msg = {
+        mtype: msg_type;
+        mterm: int;
+        mvoteGranted: bool;
+        msrc: node;
+    }
+
+    type world = {
+        currentTerm: map node int;
+        state: map node node_state;
+        votedFor: map (node, int) (list node);
+        votesGranted: map (node, int) (list node);
+        inMsgs: map node (list msg);
+    }
+
+    predicate validNode (n:node) = 0 <= n < n_nodes
+    predicate validTerm (t:int) = 1 <= t
+
+    predicate inQuorum (k:list node)
+
+    axiom inQuorum_cons : forall x:node, l:list node. inQuorum l -> inQuorum (Cons x l)
+
+    axiom quorum_intersection : forall k1 k2 : list node.
+        inQuorum k1 -> inQuorum k2 -> 
+        exists x : node. validNode x /\ mem x k1 /\ mem x k2
+
+    axiom nodeRepresentable : forall m: msg. validNode m.msrc
+
+
+    (* ------------------------------------------------------------------ *)
+    (* Inductive Invariants                                               *)
+    (* ------------------------------------------------------------------ *)
+
+    predicate voteUnique (w:world) =
+        (forall i j k :node, t :int. validNode i -> validNode j -> validNode k -> validTerm t ->
+            mem j (w.votedFor[i, t]) -> mem k (w.votedFor[i, t]) -> j = k)
+    
+    predicate voteGrantedToFor (w:world) =
+        (forall i v :node, t :int. validNode i -> validNode v -> validTerm t ->
+            mem v w.votesGranted[i, t] -> mem i w.votedFor[v, t])
+    
+    predicate messagesConsistentWithVotes (w:world) =
+        (forall i :node, m :msg. validNode i -> 
+            mem m w.inMsgs[i] -> m.mtype = RequestVoteResponse -> m.mvoteGranted = true -> mem i w.votedFor[m.msrc, m.mterm])
+    
+    predicate messagesLECurrentTerm (w:world) =
+        (forall i1 :node, m :msg. validNode i1 -> 
+            mem m w.inMsgs[i1] -> m.mterm <= w.currentTerm[m.msrc])
+        
+    predicate voteLECurrentTerm (w:world) =
+        (forall i j :node, t :int. validNode i -> validNode j -> validTerm t ->
+            mem j w.votedFor[i, t] -> t <= w.currentTerm[i])
+    
+    predicate leaderQuorum (w:world) =
+        (forall i :node. validNode i -> w.state[i] = Leader ->
+            inQuorum w.votesGranted[i, w.currentTerm[i]])
+
+    predicate inv (w:world) =
+        voteUnique w
+        /\
+        voteGrantedToFor w
+        /\
+        messagesConsistentWithVotes w
+        /\
+        messagesLECurrentTerm w
+        /\
+        voteLECurrentTerm w
+        /\
+        leaderQuorum w
+
+    (* ------------------------------------------------------------------ *)
+    (* Initial World                                                      *)
+    (* ------------------------------------------------------------------ *)
+
+    predicate initWorld_p (w:world) = 
+        (forall n :node. validNode n -> w.inMsgs[n] = Nil /\ w.state[n] = Follower /\ w.currentTerm[n] = 1)
+        /\
+        (forall n :node, t :int. validNode n -> validTerm t -> w.votedFor[n, t] = Nil /\ w.votesGranted[n, t] = Nil)
+
+    let ghost predicate initWorld (w:world) = initWorld_p w
+
+    (* ------------------------------------------------------------------ *)
+    (* Transition Functions                                               *)
+    (* ------------------------------------------------------------------ *)
+    (* timeout *)
+
+    predicate timeout_enbld (w:world) (i:node) =
+        validNode i /\ (w.state[i] = Follower \/ w.state[i] = Candidate)
+
+    let ghost function timeout (w:world) (i:node) : world
+        requires { timeout_enbld w i }
+        ensures  { inv w -> inv result }
+    =
+        let nt = w.currentTerm[i] + 1 in
+        { inMsgs      = w.inMsgs;
+          state        = w.state[i <- Candidate];
+          votedFor     = w.votedFor    [(i, nt) <- Nil];
+          votesGranted = w.votesGranted[(i, nt) <- Nil];
+          currentTerm  = w.currentTerm [i       <- nt ] }
+
+    (* requestVote *)
+
+    predicate requestVote_enbld (w:world) (i:node) (j:node) = 
+        validNode i /\ validNode j /\ w.state[i] = Candidate
+
+    let ghost function requestVote (w:world) (i:node) (j:node) : world
+        requires { requestVote_enbld w i j }
+        ensures  { inv w -> inv result }
+    =
+        { inMsgs       = w.inMsgs[j <- w.inMsgs[j] ++ Cons { mtype = RequestVoteRequest;
+                                    mterm = w.currentTerm[i];
+                                    mvoteGranted = false;
+                                    msrc  = i } Nil];
+          state        = w.state;
+          votedFor     = w.votedFor;
+          votesGranted = w.votesGranted;
+          currentTerm  = w.currentTerm }
+
+    (* becomeLeader *)
+
+    predicate becomeLeader_enbld (w:world) (i:node) =
+        validNode i
+        /\ w.state[i] = Candidate
+        /\ inQuorum w.votesGranted[i, w.currentTerm[i]]
+
+    let ghost function becomeLeader (w:world) (i:node) : world
+        requires { becomeLeader_enbld w i }
+        ensures  { inv w -> inv result }
+    =
+        { inMsgs      = w.inMsgs;
+          state        = w.state[i <- Leader];
+          votedFor     = w.votedFor;
+          votesGranted = w.votesGranted;
+          currentTerm  = w.currentTerm }
+
+    (* handleRequestVoteRequest *)
+
+    predicate handleRequestVoteRequest_enbld (w:world) (i:node) (j:node) = 
+        validNode i /\ validNode j
+        /\ not w.inMsgs[i] = Nil
+        /\ (hd w.inMsgs[i]).mtype = RequestVoteRequest
+        /\ (hd w.inMsgs[i]).msrc  = j
+        /\ (hd w.inMsgs[i]).mterm <= w.currentTerm[i]
+
+    let ghost function handleRequestVoteRequest (w:world) (i:node) (j:node) : world
+        requires { handleRequestVoteRequest_enbld w i j }
+        ensures  { inv w -> inv result }
+    =
+        match w.inMsgs[i] with
+        | Nil -> absurd
+        | Cons m tl ->
+            let newMsgs = w.inMsgs[i <- tl] in
+            match w.votedFor[i, w.currentTerm[i]] with
+            | Nil -> 
+                (* Grant = votedFor[i] in {Nil, j} /\ mterm = currentTerm[i] *)
+                let grant = m.mterm = w.currentTerm[i] in
+                let newVotedFor = if grant then w.votedFor[(i, w.currentTerm[i]) <- Cons j Nil] else w.votedFor in
+                { inMsgs       = newMsgs[j <- newMsgs[j] ++ Cons { mtype = RequestVoteResponse;
+                                            mterm = w.currentTerm[i];
+                                            mvoteGranted = grant;
+                                            msrc  = i } Nil];
+                  state        = w.state;
+                  votedFor     = newVotedFor;
+                  votesGranted = w.votesGranted;
+                  currentTerm  = w.currentTerm }
+            | Cons v _ -> 
+                (* Grant = votedFor[i] in {Nil, j} /\ mterm = currentTerm[i] *)
+                let grant = v = j && m.mterm = w.currentTerm[i] in
+                { inMsgs       = newMsgs[j <- newMsgs[j] ++ Cons { mtype = RequestVoteResponse;
+                                            mterm = w.currentTerm[i];
+                                            mvoteGranted = grant;
+                                            msrc  = i } Nil];
+                  state        = w.state;
+                  votedFor     = w.votedFor;
+                  votesGranted = w.votesGranted;
+                  currentTerm  = w.currentTerm }
+            end
+        end
+
+    (* handleRequestVoteResponse *)
+    
+    (* Auxiliary Lemma *)
+    lemma fun_tail_mem :
+      forall f: int -> list msg, k: int, hd: msg, tl: list msg, x: msg.
+       f[k] = Cons hd tl -> mem x tl -> mem x f[k]
+
+    predicate handleRequestVoteResponse_enbld (w:world) (i:node) (j:node) =
+        validNode i /\ validNode j
+        /\ not w.inMsgs[i] = Nil
+        /\ (hd w.inMsgs[i]).mtype = RequestVoteResponse
+        /\ (hd w.inMsgs[i]).msrc  = j
+        /\ (hd w.inMsgs[i]).mterm = w.currentTerm[i]
+
+    let ghost function handleRequestVoteResponse (w:world) (i:node) (j:node) : world
+        requires { handleRequestVoteResponse_enbld w i j }
+        ensures  { inv w -> inv result }
+    =
+        match w.inMsgs[i] with
+        | Nil -> absurd
+        | Cons m tl ->
+            let newMsgs = w.inMsgs[i <- tl] in
+            let newVotesGranted = if m.mvoteGranted then w.votesGranted[(i, m.mterm) <- Cons j w.votesGranted[i, m.mterm]] else w.votesGranted in
+            { inMsgs       = newMsgs;
+              state        = w.state;
+              votedFor     = w.votedFor;
+              votesGranted = newVotesGranted;
+              currentTerm  = w.currentTerm }
+        end
+
+    (* ------------------------------------------------------------------ *)
+    (* Transition Relation                                                *)
+    (* ------------------------------------------------------------------ *)
+
+    inductive stepind world world =
+        | timeout_step : forall w :world, i :node.
+            timeout_enbld w i -> stepind w (timeout w i)
+        | request_vote_step : forall w :world, i :node, j :node.
+            requestVote_enbld w i j -> stepind w (requestVote w i j)
+        | become_leader_step : forall w :world, i :node.
+            becomeLeader_enbld w i -> stepind w (becomeLeader w i)
+        | handle_request_vote_request_step : forall w :world, i :node, j :node.
+            handleRequestVoteRequest_enbld w i j ->
+            stepind w (handleRequestVoteRequest w i j)
+        | handle_request_vote_response_step : forall w :world, i :node, j :node.
+            handleRequestVoteResponse_enbld w i j ->
+            stepind w (handleRequestVoteResponse w i j)
+
+    let ghost predicate step (w1:world) (w2:world) = stepind w1 w2 
+
+    (* ------------------------------------------------------------------ *)
+    (* Inductiveness                                                      *)
+    (* ------------------------------------------------------------------ *)
+
+    clone export inductiveness.Inductiveness with
+        type world,
+        predicate inv,
+        val step,
+        val initWorld
+
+    (* ------------------------------------------------------------------ *)
+    (* Safety Property: at most one leader per term                       *)
+    (* ------------------------------------------------------------------ *)
+
+    predicate leaderUnique (w:world) =
+        forall i j : node, t : int.
+            validNode i ->
+            validNode j ->
+            validTerm t ->
+            w.state[i] = Leader ->
+            w.state[j] = Leader ->
+            w.currentTerm[i] = t ->
+            w.currentTerm[j] = t ->
+            i = j
+
+    (* Auxiliary Lemma: both leaders have majority of votesGranted in term t *)
+    lemma twoLeaders_haveMajorities :
+        forall w : world, i j : node, t : int.
+            inv w ->
+            validNode i ->
+            validNode j ->
+            validTerm t ->
+            w.state[i] = Leader ->
+            w.state[j] = Leader ->
+            w.currentTerm[i] = t ->
+            w.currentTerm[j] = t ->
+            inQuorum w.votesGranted[i, t] /\ inQuorum w.votesGranted[j, t]
+    
+    (* Auxiliary Lemma: a common voter x has voted for both i and j in term t *)
+    lemma twoLeaders_commonVoter :
+        forall w : world, i j : node, t : int.
+            inv w ->
+            validNode i ->
+            validNode j ->
+            validTerm t ->
+            w.state[i] = Leader ->
+            w.state[j] = Leader ->
+            w.currentTerm[i] = t ->
+            w.currentTerm[j] = t ->
+            exists x : node. validNode x
+                /\ mem i w.votedFor[x, t]
+                /\ mem j w.votedFor[x, t]
+
+    goal uniqueLeader :
+        forall w : world. reachable w -> leaderUnique w
+end
