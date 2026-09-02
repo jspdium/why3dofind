@@ -1,14 +1,16 @@
 {
   "fast": 0.2,
-  "time": 10.0,
+  "time": 90.0,
   "depth": 4,
   "packages": [
     "counter_alt", "counter", "inductiveness.mlw", "refinement.mlw",
     "alternate", "mutexAbstractN", "mutexAbstract", "Peterson", "oneToken",
     "leaderElect", "leaderElectMax", "slotsAbstract", "consensus", "voting"
   ],
-  "provers": [ "cvc5@1.0.3", "alt-ergo@2.4.2", "z3@5.1.0", "z3@4.11.2", "eprover@2.6" ],
-  "tactics": [ "induction_pr", "split_vc", "inline_goal" ],
+  "provers": [
+    "cvc5@1.0.3", "alt-ergo@2.4.2", "z3@5.1.0", "z3@4.11.2", "eprover@2.6"
+  ],
+  "tactics": [ "induction_pr", "split_vc", "inline_goal", "split_all_full" ],
   "drivers": [],
   "warnoff": []
 }
