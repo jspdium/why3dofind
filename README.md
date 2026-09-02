@@ -19,6 +19,7 @@ examples/waitFreeRegister/
                           Simpson's 4-slot wait-free register, by refinement
 examples/paxosNoRefinement/
                           Paxos consensus (stand-alone, no refinement)
+examples/paxos/            Paxos consensus, two-step refinement
 ```
 
 Cross-file dependencies in why3find are resolved through installed

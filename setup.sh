@@ -41,5 +41,9 @@ install_pkg leaderElectMax  examples/leaderElection/leaderElectMax.mlw
 # waitFreeRegister
 install_pkg slotsAbstract   examples/waitFreeRegister/slotsAbstract.mlw
 
+# paxos
+install_pkg consensus       examples/paxos/consensus.mlw
+install_pkg voting          examples/paxos/voting.mlw
+
 echo "done. packages installed:"
 why3find list
