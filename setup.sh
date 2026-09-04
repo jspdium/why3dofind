@@ -47,7 +47,7 @@ install_pkg voting          examples/paxos/voting.mlw
 
 # leaderElection (student contribution: João Gonçalves, Carlos Pina)
 install_pkg leaderElectMaxAlive              examples/leaderElection/leaderElectMaxAlive.mlw
-install_pkg bully                            examples/leaderElection/bully.mlw
+install_pkg bully                            examples/leaderElection/Bully.mlw
 install_pkg leaderElectDynamicFull           examples/dynamicBully/leaderElectDynamicFull.mlw
 install_pkg leaderElectMaxAliveDynamicFull   examples/dynamicBully/leaderElectMaxAliveDynamicFull.mlw
 install_pkg bullyDynamicFull                 examples/dynamicBully/bullyDynamicFull.mlw
