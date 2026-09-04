@@ -1,6 +1,9 @@
 (* Abstract specification of leader election solved by choosing
    the alive process with maximum id.
 
+   Contribution by:
+     João Gonçalves, Carlos Pina
+
    This module is not the Bully algorithm itself.
    It is an abstract machine that the concrete Bully model can refine.
 *)

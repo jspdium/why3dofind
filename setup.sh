@@ -45,8 +45,9 @@ install_pkg slotsAbstract   examples/waitFreeRegister/slotsAbstract.mlw
 install_pkg consensus       examples/paxos/consensus.mlw
 install_pkg voting          examples/paxos/voting.mlw
 
-# dynamicBully (student project: João Gonçalves, Carlos Pina)
-install_pkg leaderElectMaxAlive              wip/bully/simples/leaderElectMaxAlive.mlw
+# leaderElection (student contribution: João Gonçalves, Carlos Pina)
+install_pkg leaderElectMaxAlive              examples/leaderElection/leaderElectMaxAlive.mlw
+install_pkg bully                            examples/leaderElection/bully.mlw
 install_pkg leaderElectDynamicFull           examples/dynamicBully/leaderElectDynamicFull.mlw
 install_pkg leaderElectMaxAliveDynamicFull   examples/dynamicBully/leaderElectMaxAliveDynamicFull.mlw
 install_pkg bullyDynamicFull                 examples/dynamicBully/bullyDynamicFull.mlw

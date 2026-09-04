@@ -14,7 +14,7 @@ examples/mutualExclusionConcurrent/
                           Mutual exclusion algorithms (Peterson, Bakery, etc.)
 examples/mutualExclusionToken/
                           Dijkstra self-stabilizing ring and bidirectional array
-examples/leaderElection/  Chang-Roberts leader election, by refinement
+examples/leaderElection/  Chang-Roberts leader election + Bully, by refinement
 examples/waitFreeRegister/
                           Simpson's 4-slot wait-free register, by refinement
 examples/paxosNoRefinement/
@@ -23,7 +23,6 @@ examples/paxos/            Paxos consensus, two-step refinement
 examples/raft/             Raft leader election (message-passing, shared-memory, refinement)
 examples/dynamicBully/    Dynamic Bully leader election with crash/recovery, by refinement
 wip/                      Work-in-progress examples (not part of the library)
-├── bully/                Bully leader election (simplified static version)
 └── petersonN/            N-process Peterson filter algorithm (monolithic + refinement)
 ```
 

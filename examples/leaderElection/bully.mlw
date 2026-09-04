@@ -1,5 +1,8 @@
 (* Concrete model of the normal Bully leader election algorithm.
 
+   Contribution by:
+     João Gonçalves, Carlos Pina
+
    This model focuses on safety properties:
      1. every leader is alive;
      2. every leader is the alive process with maximum id;
