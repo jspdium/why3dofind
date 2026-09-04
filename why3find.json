@@ -8,7 +8,8 @@
     "leaderElect", "leaderElectMax", "slotsAbstract", "consensus", "voting",
     "leaderElectMaxAlive", "leaderElectDynamicFull",
     "leaderElectMaxAliveDynamicFull", "mutual_exclusion_spec",
-    "filter_abstract"
+    "filter_abstract",
+    "mutexAbstractN_cyclic"
   ],
   "provers": [
     "cvc5@1.0.3", "alt-ergo@2.4.2", "z3@5.1.0", "z3@4.11.2", "eprover@2.6"

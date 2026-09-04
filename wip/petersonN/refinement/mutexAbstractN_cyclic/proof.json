@@ -1,0 +1,13 @@
+{
+  "profile": [],
+  "proofs": {
+    "MutexAbstractN_Cyclic": {
+      "cs": { "prover": "cvc5@1.0.3", "time": 0.002 },
+      "i": { "prover": "cvc5@1.0.3", "time": 0.002 },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "oneCS": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "reset": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "step'refn": { "prover": "alt-ergo@2.4.2", "time": 0.005 }
+    }
+  }
+}
