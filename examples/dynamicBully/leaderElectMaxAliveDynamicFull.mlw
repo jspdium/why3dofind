@@ -1,5 +1,8 @@
 (* Dynamic max-alive abstract leader election machine.
 
+   Contribution by:
+     João Gonçalves, Carlos Pina
+
    This machine refines LeaderElectDynamicFull by restricting election to
    the alive process with greatest ID in the current state.
 *)

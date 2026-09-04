@@ -1,5 +1,8 @@
 (* Dynamic abstract leader election specification.
 
+   Contribution by:
+     João Gonçalves, Carlos Pina
+
    This is the most abstract machine used by the full dynamic Bully model.
    It does not know about Bully messages, timeouts, heartbeats, or IDs.
    It only records which processes are alive and which process is leader.

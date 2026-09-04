@@ -1,5 +1,8 @@
 (* Full dynamic Bully model.
 
+   Contribution by:
+     João Gonçalves, Carlos Pina
+
    Compared with the initial Bully model, this version adds:
      - dynamic failures: alive is part of the world;
      - recovery, conservatively restricted when a lower leader already exists;

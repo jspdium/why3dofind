@@ -7,7 +7,8 @@
     "alternate", "mutexAbstractN", "mutexAbstract", "Peterson", "oneToken",
     "leaderElect", "leaderElectMax", "slotsAbstract", "consensus", "voting",
     "leaderElectMaxAlive", "leaderElectDynamicFull",
-    "leaderElectMaxAliveDynamicFull", "mutual_exclusion_spec",
+    "leaderElectMaxAliveDynamicFull", "bullyDynamicFull",
+    "mutual_exclusion_spec",
     "filter_abstract",
     "mutexAbstractN_cyclic",
     "raft_msg", "raft_shm", "raft_refi"
