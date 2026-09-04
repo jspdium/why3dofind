@@ -1,7 +1,7 @@
 {
   "profile": [],
   "proofs": {
-    "Filter_Abstract_MutexN": {
+    "PetersonFilter": {
       "Inductiveness.initWorld'refn": {
         "prover": "cvc5@1.0.3",
         "time": 0.006
@@ -12,24 +12,24 @@
       },
       "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
       "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
-      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.023 },
+      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.022 },
       "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
-      "correctness": { "prover": "cvc5@1.0.3", "time": 0.019 },
-      "correctness_by_refinement": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "correctness": { "prover": "cvc5@1.0.3", "time": 0.02 },
+      "correctness_by_refinement": { "prover": "cvc5@1.0.3", "time": 0.011 },
       "count_passed_level": { "prover": "cvc5@1.0.3", "time": 0.015 },
       "count_passed_level_pair": { "prover": "cvc5@1.0.3", "time": 0.021 },
-      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.01 },
-      "initWorldC": { "prover": "cvc5@1.0.3", "time": 0.022 },
-      "inv_implies_atMostOneCS": { "prover": "cvc5@1.0.3", "time": 0.021 },
-      "last_level_valid": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.012 },
+      "initWorldC": { "prover": "cvc5@1.0.3", "time": 0.023 },
+      "inv_implies_atMostOneCS": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "last_level_valid": { "prover": "cvc5@1.0.3", "time": 0.007 },
       "refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
       "stepC": { "prover": "cvc5@1.0.3", "time": 0.026 },
       "step_Five": { "prover": "cvc5@1.0.3", "time": 0.006 },
       "step_Four": { "prover": "cvc5@1.0.3", "time": 0.006 },
       "step_Three_CS": { "prover": "cvc5@1.0.3", "time": 0.006 },
-      "step_Three_Next": { "prover": "cvc5@1.0.3", "time": 0.006 },
-      "step_Zero": { "prover": "cvc5@1.0.3", "time": 0.006 },
-      "two_cs_impossible": { "prover": "cvc5@1.0.3", "time": 0.138 }
+      "step_Three_Next": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "step_Zero": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "two_cs_impossible": { "prover": "cvc5@1.0.3", "time": 0.167 }
     }
   }
 }

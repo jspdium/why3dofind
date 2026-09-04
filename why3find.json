@@ -10,8 +10,7 @@
     "leaderElectDynamicFull",
     "leaderElectMaxAliveDynamicFull", "bullyDynamicFull",
     "mutual_exclusion_spec",
-    "filter_abstract",
-    "mutexAbstractN_cyclic",
+    "PetersonFilter",
     "raft_msg", "raft_shm", "raft_refi"
   ],
   "provers": [

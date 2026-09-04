@@ -2,17 +2,17 @@
   "profile": [],
   "proofs": {
     "PetersonAtom": {
-      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.018 },
       "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.022 },
       "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.021 },
       "Refinement.stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.047 },
       "a1": { "prover": "cvc5@1.0.3", "time": 3.8 },
-      "a2": { "prover": "cvc5@1.0.3", "time": 1.7 },
+      "a2": { "prover": "cvc5@1.0.3", "time": 1.5 },
       "a3a": { "prover": "cvc5@1.0.3", "time": 0.75 },
       "a3b": { "prover": "cvc5@1.0.3", "time": 0.927 },
       "a4": { "prover": "cvc5@1.0.3", "time": 0.812 },
       "cs": { "prover": "cvc5@1.0.3", "time": 2.4 },
-      "refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
       "safety": { "prover": "cvc5@1.0.3", "time": 0.034 },
       "safety_Peterson": {
         "tactic": "split_vc",

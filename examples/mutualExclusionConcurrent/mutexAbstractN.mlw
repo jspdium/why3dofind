@@ -56,6 +56,15 @@ module MutexAbstractN
     ensures  { inv w -> inv result }
   = { pc_n = w.pc_n[p<-Done] }
 
+  (* Reset: Done -> Init  (allows cyclic algorithms)
+   *)
+  predicate reset_enbld (w:world) (p:proc) =
+    w.pc_n[p] = Done
+  let ghost function reset (w:world) (p:proc) : world
+    requires { reset_enbld w p }
+    ensures  { inv w -> inv result }
+  = { pc_n = w.pc_n[p<-Init] }
+
 
   (* Transition relation
    *)
@@ -64,6 +73,8 @@ module MutexAbstractN
       i_enbld w p -> stepind w (i w p)
   | cs : forall w :world, p :proc.
       cs_enbld w p -> stepind w (cs w p)
+  | reset : forall w :world, p :proc.
+      reset_enbld w p -> stepind w (reset w p)
 
   let ghost predicate step (w1:world) (w2:world) = stepind w1 w2 
 

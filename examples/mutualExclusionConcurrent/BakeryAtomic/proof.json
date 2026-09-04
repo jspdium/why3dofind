@@ -78,8 +78,8 @@
       "initWorldC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.009 },
       "refn": { "prover": "cvc5@1.0.3", "time": 0.004 },
       "safety": { "prover": "cvc5@1.0.3", "time": 0.009 },
-      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
-      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.095 }
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.104 }
     }
   }
 }

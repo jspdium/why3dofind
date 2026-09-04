@@ -1,16 +1,31 @@
 (* vim: set tabstop=2 shiftwidth=2 softtabstop=2 expandtab: *)
-module Filter_Abstract
+
+(* N-process Peterson filter algorithm.
+   Refines MutexAbstractN directly.
+
+   Contribution by:
+     Miguel Carvalho, Margarida Pires
+
+   Refinement mapping:
+     Idle   -> Init
+     Trying -> Init
+     CS     -> CS
+     Exit   -> Done
+ *)
+
+module PetersonFilter
 
   use export int.Int
   use export map.Map
   use export map.Const
 
-  use mutual_exclusion_spec.Mutual_Exclusion_Spec
-
   type process = int
   type level = int
 
-  constant n_processes : int = Mutual_Exclusion_Spec.n_processes
+  val constant n_processes : int
+  axiom n_processes_min : n_processes >= 2
+
+  clone mutexAbstractN.MutexAbstractN with type proc = process
 
   predicate valid_process (p:process) =
     0 <= p < n_processes
@@ -21,8 +36,11 @@ module Filter_Abstract
   lemma last_level_valid:
     valid_level (n_processes - 1)
 
+  (* The filter's own control states *)
+  type state = Idle | Trying | CS | Exit
+
   type world = {
-    fpc     : map process Mutual_Exclusion_Spec.state;
+    fpc     : map process state;
     flvl    : map process level;
     fvictim : map level process;
   }
@@ -320,17 +338,29 @@ module Filter_Abstract
       reachable w -> atMostOneCS w
 
   (**************************************************************************)
-  (* Refinement to the abstract mutual-exclusion specification               *)
+  (* Refinement to MutexAbstractN                                            *)
   (**************************************************************************)
 
-  let ghost function refn (w:world) : Mutual_Exclusion_Spec.world =
-    {
-      pc = w.fpc;
-    }
+  (* State mapping: filter states -> abstract states
+     Idle   -> Init
+     Trying -> Init
+     CS     -> CS
+     Exit   -> Done
+   *)
+  function mapSt (st:state) : MutexAbstractN.state =
+    match st with
+    | Idle   -> MutexAbstractN.Init
+    | Trying -> MutexAbstractN.Init
+    | CS     -> MutexAbstractN.CS
+    | Exit   -> MutexAbstractN.Done
+    end
+
+  let ghost function refn (w:world) : MutexAbstractN.world =
+    { pc_n = fun p -> mapSt (w.fpc[p]) }
 
   let ghost predicate initWorldC (w:world) : bool
     ensures { result -> inv w }
-    ensures { result -> Mutual_Exclusion_Spec.initWorld (refn w) }
+    ensures { result -> MutexAbstractN.initWorld (refn w) }
   =
     initWorld w
 
@@ -338,7 +368,7 @@ module Filter_Abstract
     step w1 w2 /\
     (
       refn w1 = refn w2 \/
-      Mutual_Exclusion_Spec.step (refn w1) (refn w2)
+      MutexAbstractN.step (refn w1) (refn w2)
     )
 
   let ghost predicate stepC (w1:world) (w2:world) : bool
@@ -346,24 +376,24 @@ module Filter_Abstract
     ensures {
       result -> inv w1 ->
         refn w1 = refn w2 \/
-        Mutual_Exclusion_Spec.step (refn w1) (refn w2)
+        MutexAbstractN.step (refn w1) (refn w2)
     }
   =
     stepC_p w1 w2
 
   clone refinement.Refinement with
-    type worldA = Mutual_Exclusion_Spec.world,
+    type worldA = MutexAbstractN.world,
     type worldC = world,
     val refn = refn,
-    predicate invA = Mutual_Exclusion_Spec.inv,
+    predicate invA = MutexAbstractN.inv,
     predicate invC = inv,
-    val initWorldA = Mutual_Exclusion_Spec.initWorld,
+    val initWorldA = MutexAbstractN.initWorld,
     val initWorldC = initWorldC,
-    val stepA = Mutual_Exclusion_Spec.step,
+    val stepA = MutexAbstractN.step,
     val stepC = stepC
 
   goal correctness_by_refinement:
     forall w:world.
-      reachableC w -> Mutual_Exclusion_Spec.atMostOneCS (refn w)
+      reachableC w -> MutexAbstractN.atMostOneCS (refn w)
 
 end

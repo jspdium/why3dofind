@@ -30,6 +30,7 @@ install_pkg alternate   examples/twoPhase/alternate.mlw
 install_pkg mutexAbstractN examples/mutualExclusionConcurrent/mutexAbstractN.mlw
 install_pkg mutexAbstract  examples/mutualExclusionConcurrent/mutexAbstract.mlw
 install_pkg Peterson       examples/mutualExclusionConcurrent/Peterson.mlw
+install_pkg PetersonFilter  examples/mutualExclusionConcurrent/PetersonFilter.mlw
 
 # mutualExclusionToken
 install_pkg oneToken        examples/mutualExclusionToken/oneToken.mlw
@@ -54,8 +55,6 @@ install_pkg bullyDynamicFull                 examples/dynamicBully/bullyDynamicF
 
 # wip/petersonN (student project)
 install_pkg mutual_exclusion_spec            wip/petersonN/refinement/mutual_exclusion_spec.mlw
-install_pkg filter_abstract                 wip/petersonN/refinement/filter_abstract.mlw
-install_pkg mutexAbstractN_cyclic           wip/petersonN/refinement/mutexAbstractN_cyclic.mlw
 
 # raft (student project: Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva)
 install_pkg raft_msg                        examples/raft/raft_msg.mlw
