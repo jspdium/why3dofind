@@ -20,8 +20,8 @@ examples/waitFreeRegister/
 examples/paxosNoRefinement/
                           Paxos consensus (stand-alone, no refinement)
 examples/paxos/            Paxos consensus, two-step refinement
+examples/raft/             Raft leader election (message-passing, shared-memory, refinement)
 wip/                      Work-in-progress examples (not part of the library)
-├── raft/                 Raft consensus (message-passing and shared-memory variants)
 ├── bully/                Bully leader election (static + dynamic with crash/recovery)
 └── petersonN/            N-process Peterson filter algorithm (monolithic + refinement)
 ```

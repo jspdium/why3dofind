@@ -53,6 +53,12 @@ install_pkg leaderElectMaxAliveDynamicFull   wip/bully/compl/leaderElectMaxAlive
 # wip/petersonN (student project)
 install_pkg mutual_exclusion_spec            wip/petersonN/refinement/mutual_exclusion_spec.mlw
 install_pkg filter_abstract                 wip/petersonN/refinement/filter_abstract.mlw
+install_pkg mutexAbstractN_cyclic           wip/petersonN/refinement/mutexAbstractN_cyclic.mlw
+
+# raft (student project: Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva)
+install_pkg raft_msg                        examples/raft/raft_msg.mlw
+install_pkg raft_shm                        examples/raft/raft_shm.mlw
+install_pkg raft_refi                       examples/raft/raft_refi.mlw
 
 echo "done. packages installed:"
 why3find list

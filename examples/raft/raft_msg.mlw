@@ -1,3 +1,10 @@
+(* ============================================================
+   Raft Leader Election — Message-Passing Model
+
+   Contribution by:
+     Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
+   ============================================================ *)
+
 module RaftTerms
 
     use int.Int

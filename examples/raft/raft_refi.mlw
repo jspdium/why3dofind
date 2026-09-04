@@ -1,5 +1,8 @@
 (* ============================================================
    Raft Refinement: Asynchronous Network to Abstract Ledger
+
+   Contribution by:
+     Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
    ============================================================ *)
 
 module AbstractElection

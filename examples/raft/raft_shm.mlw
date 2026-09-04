@@ -1,6 +1,9 @@
 (* ============================================================
    Simplified Raft – no logs, no log replication.
 
+   Contribution by:
+     Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
+
    Based on:
      • raft.tla (Ongaro 2014)  –  structure of state & actions
      • why3do/paxos/voting.mlw –  proof style (ghost votes map,
