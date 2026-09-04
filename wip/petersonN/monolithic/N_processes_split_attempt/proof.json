@@ -1,0 +1,40 @@
+{
+  "profile": [],
+  "proofs": {
+    "Peterson_N_Monolithic": {
+      "Inductiveness.initWorld'refn": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.005
+      },
+      "Inductiveness.step'refn": {
+        "prover": "alt-ergo@2.4.2",
+        "time": 0.009
+      },
+      "correctness": null,
+      "correctness_from_safety_inv": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.011
+      },
+      "count_passed_last": { "prover": "cvc5@1.0.3", "time": 0.011 },
+      "count_passed_last_pair": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "count_passed_level": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "safety_inv_implies_atMostOneCS": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.04 },
+          { "prover": "cvc5@1.0.3", "time": 0.03 },
+          { "prover": "cvc5@1.0.3", "time": 0.021 }
+        ]
+      },
+      "step_Five": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "step_Four": { "prover": "cvc5@1.0.3", "time": 0.02 },
+      "step_One": { "prover": "cvc5@1.0.3", "time": 0.019 },
+      "step_Three_CS": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "step_Three_Next": { "prover": "cvc5@1.0.3", "time": 0.027 },
+      "step_Two": { "prover": "cvc5@1.0.3", "time": 0.019 },
+      "step_Zero": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "valid_process_lt": { "prover": "cvc5@1.0.3", "time": 0.002 }
+    }
+  }
+}

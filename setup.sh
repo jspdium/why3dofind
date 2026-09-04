@@ -50,5 +50,9 @@ install_pkg leaderElectMaxAlive              wip/bully/simples/leaderElectMaxAli
 install_pkg leaderElectDynamicFull           wip/bully/compl/leaderElectDynamicFull.mlw
 install_pkg leaderElectMaxAliveDynamicFull   wip/bully/compl/leaderElectMaxAliveDynamicFull.mlw
 
+# wip/petersonN (student project)
+install_pkg mutual_exclusion_spec            wip/petersonN/refinement/mutual_exclusion_spec.mlw
+install_pkg filter_abstract                 wip/petersonN/refinement/filter_abstract.mlw
+
 echo "done. packages installed:"
 why3find list

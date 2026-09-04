@@ -22,7 +22,8 @@ examples/paxosNoRefinement/
 examples/paxos/            Paxos consensus, two-step refinement
 wip/                      Work-in-progress examples (not part of the library)
 ├── raft/                 Raft consensus (message-passing and shared-memory variants)
-└── bully/                Bully leader election (static + dynamic with crash/recovery)
+├── bully/                Bully leader election (static + dynamic with crash/recovery)
+└── petersonN/            N-process Peterson filter algorithm (monolithic + refinement)
 ```
 
 Cross-file dependencies in why3find are resolved through installed

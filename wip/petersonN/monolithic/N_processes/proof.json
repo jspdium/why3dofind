@@ -1,0 +1,27 @@
+{
+  "profile": [],
+  "proofs": {
+    "Peterson_N_Monolithic": {
+      "Inductiveness.initWorld'refn": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.007
+      },
+      "Inductiveness.step'refn": {
+        "prover": "alt-ergo@2.4.2",
+        "time": 0.007
+      },
+      "correctness": { "prover": "cvc5@1.0.3", "time": 0.016 },
+      "count_passed_level": { "prover": "cvc5@1.0.3", "time": 0.015 },
+      "count_passed_level_pair": { "prover": "cvc5@1.0.3", "time": 0.022 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "inv_implies_atMostOneCS": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "last_level_valid": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "step_Five": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "step_Four": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "step_Three_CS": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "step_Three_Next": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "step_Zero": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "two_cs_impossible": { "prover": "cvc5@1.0.3", "time": 0.146 }
+    }
+  }
+}
