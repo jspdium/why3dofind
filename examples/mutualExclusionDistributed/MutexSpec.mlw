@@ -1,0 +1,74 @@
+(* Abstract spec of mutual exclusion for a bounded
+   number of processes, modelling only CS occupancy.
+   Suited as an abstraction target for distributed
+   mutual-exclusion algorithms such as Ricart-Agrawala.
+ *)
+
+module MutexSpec
+
+  use int.Int
+  use map.Map
+
+  type pid = int
+
+  val constant n_processes : int
+  axiom n_processes_pos : n_processes > 0
+
+  type world = { inCS : map pid bool }
+
+  predicate inv (w:world) =
+    forall p q. 0 <= p < n_processes -> 0 <= q < n_processes ->
+      w.inCS[p] /\ w.inCS[q] -> p = q
+
+  predicate initWorld_p (w:world) =
+    forall p. 0 <= p < n_processes -> not w.inCS[p]
+
+  let ghost predicate initWorld (w:world)
+    ensures { result -> inv w }
+  = initWorld_p w
+
+  (* System Actions
+     - enter: a process enters the CS, provided no other process is in it
+     - leave: a process leaves the CS
+   *)
+
+  predicate enter_enbld (w:world) (p:pid) =
+    0 <= p < n_processes /\ not w.inCS[p] /\
+    forall q. 0 <= q < n_processes -> q <> p -> not w.inCS[q]
+
+  let ghost function enter (w:world) (p:pid) : world
+    requires { enter_enbld w p }
+    ensures  { inv w -> inv result }
+  = { inCS = w.inCS[p<-true] }
+
+  predicate leave_enbld (w:world) (p:pid) =
+    0 <= p < n_processes /\ w.inCS[p]
+
+  let ghost function leave (w:world) (p:pid) : world
+    requires { leave_enbld w p }
+    ensures  { inv w -> inv result }
+  = { inCS = w.inCS[p<-false] }
+
+  (* Transition relation
+   *)
+  inductive stepind world world =
+  | step_enter : forall w p. enter_enbld w p -> stepind w (enter w p)
+  | step_leave : forall w p. leave_enbld w p -> stepind w (leave w p)
+
+  let ghost predicate step (w1:world) (w2:world)
+    ensures { result -> inv w1 -> inv w2 }
+  = stepind w1 w2
+
+  (* Proof of inductiveness
+   *)
+  clone export inductiveness.Inductiveness with
+    type world,
+    predicate inv,
+    val step,
+    val initWorld
+
+  (* Safety Property
+   *)
+  goal oneCS : forall w :world. reachable w -> inv w
+
+end

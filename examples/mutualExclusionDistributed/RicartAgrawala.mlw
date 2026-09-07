@@ -1,0 +1,233 @@
+(* Ricart-Agrawala mutual exclusion algorithm.
+
+   Original model by:
+     Cláudia Pinto, Patrícia Carvalho
+
+   Adapted to the why3do refinement framework, with corrections
+   to the invariant and action guards.
+
+   Refines MutexSpec (abstract mutual exclusion).
+ *)
+
+module Ricart_Agrawala
+  use int.Int
+  use list.List
+  use map.Map
+  use map.Const
+  use list.Mem
+
+  use MutexSpec.MutexSpec
+
+  type timestamp = int
+
+  type st = Requesting | CS | NCS
+
+  type request = { rts: timestamp; rpid: MutexSpec.pid }
+
+  predicate less_req (r1 r2: request) =
+    r1.rts < r2.rts \/ (r1.rts = r2.rts /\ r1.rpid < r2.rpid)
+
+  type p_queue = list request
+
+  constant max_int : int
+
+  type world = {
+    state     : map MutexSpec.pid st;
+    n_replies : map MutexSpec.pid int;
+    last_req  : map MutexSpec.pid timestamp;
+    num       : map MutexSpec.pid timestamp;
+    queues    : map MutexSpec.pid p_queue;
+    replied   : map MutexSpec.pid (map MutexSpec.pid bool);
+  }
+
+  predicate oneInCS (w: world) =
+    forall p q. 0 <= p < MutexSpec.n_processes -> 0 <= q < MutexSpec.n_processes ->
+      w.state[p] = CS /\ w.state[q] = CS -> p = q
+
+  (* If p is in CS, p has received replies from all other processes *)
+  predicate csReplies (w: world) =
+    forall p q. 0 <= p < MutexSpec.n_processes -> 0 <= q < MutexSpec.n_processes -> p <> q ->
+      w.state[p] = CS -> w.replied[p][q]
+
+  (* If q is in CS, q has not replied to any requesting process *)
+  predicate csNoReply (w: world) =
+    forall p q. 0 <= p < MutexSpec.n_processes -> 0 <= q < MutexSpec.n_processes -> p <> q ->
+      w.state[q] = CS -> w.state[p] = Requesting -> not w.replied[p][q]
+
+  predicate inv (w: world) =
+    oneInCS w
+    /\
+    (forall p. 0 <= p < MutexSpec.n_processes -> w.state[p] = CS ->
+       w.n_replies[p] = MutexSpec.n_processes - 1)
+    /\
+    csReplies w
+    /\
+    csNoReply w
+
+  predicate initWorld_p (w: world) =
+    (forall p. 0 <= p < MutexSpec.n_processes ->
+       w.state[p] = NCS /\
+       w.n_replies[p] = 0 /\
+       w.last_req[p] = max_int /\
+       w.num[p] = 0 /\
+       w.queues[p] = Nil /\
+       (forall q. 0 <= q < MutexSpec.n_processes -> not w.replied[p][q]))
+
+  let ghost predicate initWorld (w: world)
+    ensures { result -> inv w }
+  = initWorld_p w
+
+  (* State mapping: CS -> true, everything else -> false *)
+  let ghost function refn (w: world) : MutexSpec.world =
+    { MutexSpec.inCS = fun p -> match w.state[p] with CS -> true | _ -> false end }
+
+  (* Actions *)
+
+  predicate request_Send_enbld (w: world) (p: MutexSpec.pid) =
+    0 <= p < MutexSpec.n_processes /\ w.state[p] = NCS
+
+  let ghost function request_Send (w: world) (p: MutexSpec.pid) : world
+    requires { request_Send_enbld w p }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    let ts = w.num[p] + 1 in
+    let own_req = { rts = ts; rpid = p } in
+    { state     = set w.state p Requesting;
+      num       = set w.num p ts;
+      last_req  = set w.last_req p ts;
+      n_replies = set w.n_replies p 0;
+      queues    = set w.queues p (Cons own_req Nil);
+      replied   = set w.replied p (const false);
+    }
+
+  predicate enter_CS_enbld (w: world) (p: MutexSpec.pid) =
+    0 <= p < MutexSpec.n_processes /\ w.state[p] = Requesting /\
+    (forall q. 0 <= q < MutexSpec.n_processes -> q <> p -> w.replied[p][q]) /\
+    (forall r. 0 <= r < MutexSpec.n_processes -> r <> p -> w.state[r] = Requesting ->
+       not w.replied[r][p])
+
+  let ghost function enter_CS (w: world) (p: MutexSpec.pid) : world
+    requires { enter_CS_enbld w p }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    { state     = set w.state p CS;
+      num       = w.num;
+      last_req  = w.last_req;
+      n_replies = set w.n_replies p (MutexSpec.n_processes - 1);
+      queues    = w.queues;
+      replied   = w.replied;
+    }
+
+  predicate leave_CS_enbld (w: world) (p: MutexSpec.pid) =
+    0 <= p < MutexSpec.n_processes /\ w.state[p] = CS
+
+  let ghost function leave_CS (w: world) (p: MutexSpec.pid) : world
+    requires { leave_CS_enbld w p }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    { state     = set w.state p NCS;
+      num       = w.num;
+      last_req  = set w.last_req p max_int;
+      n_replies = set w.n_replies p 0;
+      queues    = set w.queues p Nil;
+      replied   = set w.replied p (const false);
+    }
+
+  predicate request_Receive_enbld (w: world) (p: MutexSpec.pid) (r: request) =
+    0 <= p < MutexSpec.n_processes /\ p <> r.rpid /\
+    (w.state[p] = CS \/
+     (w.state[p] = Requesting /\ less_req { rts = w.last_req[p]; rpid = p } r))
+
+  let ghost function request_Receive (w: world) (r: request) (p: MutexSpec.pid) : world
+    requires { request_Receive_enbld w p r }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    let new_clock = if r.rts > w.num[p] then r.rts else w.num[p] in
+    { state     = w.state;
+      num       = set w.num p new_clock;
+      last_req  = w.last_req;
+      n_replies = w.n_replies;
+      queues    = set w.queues p (Cons r w.queues[p]);
+      replied   = w.replied;
+    }
+
+  predicate reply_Send_enbld (w: world) (p: MutexSpec.pid) (r: request) =
+    0 <= p < MutexSpec.n_processes /\ p <> r.rpid /\
+    w.state[r.rpid] = Requesting /\
+    not w.replied[r.rpid][p] /\
+    ((w.state[p] = NCS) \/
+     (w.state[p] = Requesting /\ less_req r { rts = w.last_req[p]; rpid = p }))
+
+  let ghost function reply_Send (w: world) (p: MutexSpec.pid) (r: request) : world
+    requires { reply_Send_enbld w p r }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    { state     = w.state;
+      num       = w.num;
+      last_req  = w.last_req;
+      n_replies = set w.n_replies r.rpid (w.n_replies[r.rpid] + 1);
+      queues    = w.queues;
+      replied   = set w.replied r.rpid (set w.replied[r.rpid] p true);
+    }
+
+  predicate reply_Receive_enbld (w: world) (p: MutexSpec.pid) (q: MutexSpec.pid) =
+    0 <= p < MutexSpec.n_processes /\ 0 <= q < MutexSpec.n_processes /\ p <> q /\
+    w.state[p] = Requesting /\ not w.replied[p][q] /\
+    w.state[q] <> CS
+
+  let ghost function reply_Receive (w: world) (p: MutexSpec.pid) (q: MutexSpec.pid) : world
+    requires { reply_Receive_enbld w p q }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    { state     = w.state;
+      num       = w.num;
+      last_req  = w.last_req;
+      n_replies = set w.n_replies p (w.n_replies[p] + 1);
+      queues    = w.queues;
+      replied   = set w.replied p (set w.replied[p] q true);
+    }
+
+  (* Transition relation *)
+  inductive stepind world world =
+  | step_req_send    : forall w p.   request_Send_enbld w p     -> stepind w (request_Send w p)
+  | step_enter_cs    : forall w p.   enter_CS_enbld w p         -> stepind w (enter_CS w p)
+  | step_leave_cs    : forall w p.   leave_CS_enbld w p         -> stepind w (leave_CS w p)
+  | step_req_receive : forall w r p. request_Receive_enbld w p r -> stepind w (request_Receive w r p)
+  | step_reply_send  : forall w p r. reply_Send_enbld w p r     -> stepind w (reply_Send w p r)
+  | step_reply_recv  : forall w p q. reply_Receive_enbld w p q  -> stepind w (reply_Receive w p q)
+
+  let ghost predicate step (w1: world) (w2: world) = stepind w1 w2
+
+  clone export refinement.Refinement with
+    type worldC = world, type worldA = MutexSpec.world, val refn,
+    predicate invC = inv, predicate invA = MutexSpec.inv,
+    val initWorldC = initWorld, val initWorldA = MutexSpec.initWorld,
+    val stepC = step, val stepA = MutexSpec.step
+
+  (* Safety properties *)
+
+  goal mutualExclusion :
+    forall w: world, p q: MutexSpec.pid. reachableC w ->
+    0 <= p < MutexSpec.n_processes -> 0 <= q < MutexSpec.n_processes ->
+    w.state[p] = CS -> w.state[q] = CS -> p = q
+
+  goal allRepliesBeforeCS :
+    forall w: world, p: MutexSpec.pid. reachableC w ->
+    0 <= p < MutexSpec.n_processes -> w.state[p] = CS ->
+    w.n_replies[p] = MutexSpec.n_processes - 1
+
+  goal replySendOnlyIfNotCSOrRequesting :
+    forall w: world, p: MutexSpec.pid, r: request. reachableC w ->
+    0 <= p < MutexSpec.n_processes -> reply_Send_enbld w p r ->
+    w.state[p] = NCS \/ w.state[p] = Requesting
+
+  goal mutualExclusion_by_refinement :
+    forall w: world. reachableC w -> MutexSpec.inv (refn w)
+
+end

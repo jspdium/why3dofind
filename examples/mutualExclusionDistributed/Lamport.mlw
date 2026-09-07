@@ -1,0 +1,190 @@
+(* Lamport's distributed mutual exclusion algorithm.
+
+   Original model by:
+     João Duarte, Luís Silva
+
+   Adapted to the why3do refinement framework, with corrections to the
+   clock update and reply guard.
+
+   Refines MutexSpec (abstract mutual exclusion).
+ *)
+
+module LamportDistributedMutex
+  use int.Int
+  use map.Map
+
+  use MutexSpec.MutexSpec
+
+  predicate valid_p (p: MutexSpec.pid) = 0 <= p < MutexSpec.n_processes
+
+  type pstate = Idle | Requesting | InCS
+
+  type world = {
+    pc         : map MutexSpec.pid pstate;
+    clock      : map MutexSpec.pid int;
+    request_ts : map MutexSpec.pid int;
+    acks       : map MutexSpec.pid (map MutexSpec.pid int);
+  }
+
+  (* Invariant components *)
+  predicate safety (w: world) =
+    forall p1 p2. valid_p p1 /\ valid_p p2 ->
+      w.pc[p1] = InCS /\ w.pc[p2] = InCS -> p1 = p2
+
+  predicate inv_pos (w: world) =
+    forall p. valid_p p -> w.clock[p] >= 0 /\ w.request_ts[p] >= 0
+
+  predicate inv_act1 (w: world) =
+    forall p. valid_p p /\ (w.pc[p] = Requesting \/ w.pc[p] = InCS) ->
+      w.request_ts[p] > 0
+
+  predicate inv_act2 (w: world) =
+    forall p. valid_p p /\ w.request_ts[p] > 0 ->
+      (w.pc[p] = Requesting \/ w.pc[p] = InCS)
+
+  predicate inv_min (w: world) =
+    forall p q. valid_p p /\ valid_p q /\ p <> q ->
+      w.pc[p] = InCS /\ w.request_ts[q] > 0 ->
+        w.request_ts[p] < w.request_ts[q] \/
+        (w.request_ts[p] = w.request_ts[q] /\ p < q)
+
+  predicate inv_bnd (w: world) =
+    forall p. valid_p p -> w.clock[p] >= w.request_ts[p]
+
+  predicate inv_abnd (w: world) =
+    forall p q. valid_p p /\ valid_p q -> w.acks[p][q] <= w.clock[p]
+
+  predicate inv_incs (w: world) =
+    forall p q. valid_p p /\ valid_p q /\ p <> q /\ w.pc[p] = InCS ->
+      w.acks[p][q] = w.request_ts[p]
+
+  predicate inv_ackc (w: world) =
+    forall p q. valid_p p /\ valid_p q /\ p <> q /\
+      w.request_ts[p] > 0 /\ w.acks[p][q] = w.request_ts[p] ->
+        w.clock[q] >= w.request_ts[p]
+
+  predicate inv_old (w: world) =
+    forall p q. valid_p p /\ valid_p q /\ w.pc[p] = InCS ->
+      w.request_ts[p] <= w.clock[q]
+
+  predicate inv (w: world) =
+    safety w /\ inv_pos w /\ inv_act1 w /\ inv_act2 w /\
+    inv_min w /\ inv_bnd w /\ inv_abnd w /\
+    inv_incs w /\ inv_ackc w /\ inv_old w
+
+  (* Initial state *)
+  predicate initWorld_p (w: world) =
+    (forall p. valid_p p -> w.pc[p] = Idle) /\
+    (forall p. valid_p p -> w.clock[p] = 0) /\
+    (forall p. valid_p p -> w.request_ts[p] = 0) /\
+    (forall p q. valid_p p /\ valid_p q -> w.acks[p][q] = 0)
+
+  let ghost predicate initWorld (w: world)
+    ensures { result -> inv w }
+  = initWorld_p w
+
+  (* State mapping: InCS -> true, everything else -> false *)
+  let ghost function refn (w: world) : MutexSpec.world =
+    { MutexSpec.inCS = fun p -> match w.pc[p] with InCS -> true | _ -> false end }
+
+  (* Actions *)
+
+  predicate step_Request_enbld (w: world) (p: MutexSpec.pid) =
+    valid_p p /\ w.pc[p] = Idle
+
+  let ghost function step_Request (w: world) (p: MutexSpec.pid) : world
+    requires { step_Request_enbld w p }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    let nc = w.clock[p] + 1 in
+    { pc         = set w.pc p Requesting;
+      clock      = set w.clock p nc;
+      request_ts = set w.request_ts p nc;
+      acks       = w.acks;
+    }
+
+  predicate step_ReceiveAck_enbld (w: world) (p q: MutexSpec.pid) =
+    valid_p p /\ valid_p q /\ p <> q /\ w.pc[p] = Requesting /\
+    w.clock[q] >= w.request_ts[p] /\
+    (w.pc[q] = Idle \/
+     (w.pc[q] = Requesting /\
+      (w.request_ts[p] < w.request_ts[q] \/
+       (w.request_ts[p] = w.request_ts[q] /\ p < q))))
+
+  let ghost function step_ReceiveAck (w: world) (p q: MutexSpec.pid) : world
+    requires { step_ReceiveAck_enbld w p q }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    let max_clk = if w.clock[q] > w.clock[p] then w.clock[q] else w.clock[p] in
+    let nc = max_clk + 1 in
+    { pc         = w.pc;
+      clock      = set w.clock p nc;
+      request_ts = w.request_ts;
+      acks       = set w.acks p (set w.acks[p] q w.request_ts[p]);
+    }
+
+  predicate can_enter_cs (w: world) (p: MutexSpec.pid) =
+    w.pc[p] = Requesting /\
+    (forall q. valid_p q /\ p <> q /\ w.request_ts[q] > 0 ->
+      w.request_ts[p] < w.request_ts[q] \/
+      (w.request_ts[p] = w.request_ts[q] /\ p < q)) /\
+    (forall q. valid_p q /\ p <> q -> w.acks[p][q] = w.request_ts[p])
+
+  predicate step_EnterCS_enbld (w: world) (p: MutexSpec.pid) =
+    valid_p p /\ can_enter_cs w p
+
+  let ghost function step_EnterCS (w: world) (p: MutexSpec.pid) : world
+    requires { step_EnterCS_enbld w p }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    { pc         = set w.pc p InCS;
+      clock      = w.clock;
+      request_ts = w.request_ts;
+      acks       = w.acks;
+    }
+
+  predicate step_Release_enbld (w: world) (p: MutexSpec.pid) =
+    valid_p p /\ w.pc[p] = InCS
+
+  let ghost function step_Release (w: world) (p: MutexSpec.pid) : world
+    requires { step_Release_enbld w p }
+    ensures  { inv w -> inv result }
+    ensures  { inv w -> refn result = refn w \/ MutexSpec.step (refn w) (refn result) }
+  =
+    let nc = w.clock[p] + 1 in
+    { pc         = set w.pc p Idle;
+      clock      = set w.clock p nc;
+      request_ts = set w.request_ts p 0;
+      acks       = w.acks;
+    }
+
+  (* Transition relation *)
+  inductive stepind world world =
+  | step_req    : forall w p.   step_Request_enbld w p   -> stepind w (step_Request w p)
+  | step_ack    : forall w p q. step_ReceiveAck_enbld w p q -> stepind w (step_ReceiveAck w p q)
+  | step_enter  : forall w p.   step_EnterCS_enbld w p   -> stepind w (step_EnterCS w p)
+  | step_rel    : forall w p.   step_Release_enbld w p   -> stepind w (step_Release w p)
+
+  let ghost predicate step (w1: world) (w2: world) = stepind w1 w2
+
+  clone export refinement.Refinement with
+    type worldC = world, type worldA = MutexSpec.world, val refn,
+    predicate invC = inv, predicate invA = MutexSpec.inv,
+    val initWorldC = initWorld, val initWorldA = MutexSpec.initWorld,
+    val stepC = step, val stepA = MutexSpec.step
+
+  goal mutualExclusion :
+    forall w: world, p1 p2: MutexSpec.pid.
+    reachableC w ->
+    valid_p p1 -> valid_p p2 ->
+    w.pc[p1] = InCS -> w.pc[p2] = InCS ->
+      p1 = p2
+
+  goal mutualExclusion_by_refinement :
+    forall w: world.
+    reachableC w -> MutexSpec.inv (refn w)
+
+end

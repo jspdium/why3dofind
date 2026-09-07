@@ -11,6 +11,9 @@
     "leaderElectMaxAliveDynamicFull", "bullyDynamicFull",
     "mutual_exclusion_spec",
     "PetersonFilter",
+    "MutexSpec",
+    "Lamport",
+    "RicartAgrawala",
     "raft_msg", "raft_shm", "raft_refi"
   ],
   "provers": [

@@ -5,7 +5,7 @@
       "a1": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "z3@4.11.2", "time": 0.058 },
+          { "prover": "z3@4.11.2", "time": 8.8 },
           { "prover": "cvc5@1.0.3", "time": 0.106 }
         ]
       },
@@ -41,7 +41,7 @@
             "tactic": "split_vc",
             "children": [
               { "prover": "cvc5@1.0.3", "time": 0.236 },
-              { "prover": "cvc5@1.0.3", "time": 2.3 }
+              { "prover": "cvc5@1.0.3", "time": 37.0 }
             ]
           }
         ]

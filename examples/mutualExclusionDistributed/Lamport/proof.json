@@ -1,0 +1,46 @@
+{
+  "profile": [],
+  "proofs": {
+    "LamportDistributedMutex": {
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.026 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.054 },
+      "mutualExclusion": { "prover": "alt-ergo@2.4.2", "time": 0.006 },
+      "mutualExclusion_by_refinement": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.036
+      },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.013 },
+      "step_EnterCS": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.051 },
+          { "prover": "cvc5@1.0.3", "time": 17.7 }
+        ]
+      },
+      "step_ReceiveAck": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.076 },
+          { "prover": "cvc5@1.0.3", "time": 0.023 }
+        ]
+      },
+      "step_Release": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.116 },
+          { "prover": "cvc5@1.0.3", "time": 11.7 }
+        ]
+      },
+      "step_Request": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.197 },
+          { "prover": "cvc5@1.0.3", "time": 0.024 }
+        ]
+      }
+    }
+  }
+}

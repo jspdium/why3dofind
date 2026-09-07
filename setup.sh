@@ -32,6 +32,11 @@ install_pkg mutexAbstract  examples/mutualExclusionConcurrent/mutexAbstract.mlw
 install_pkg Peterson       examples/mutualExclusionConcurrent/Peterson.mlw
 install_pkg PetersonFilter  examples/mutualExclusionConcurrent/PetersonFilter.mlw
 
+# mutualExclusionDistributed (student contributions)
+install_pkg MutexSpec      examples/mutualExclusionDistributed/MutexSpec.mlw
+install_pkg Lamport        examples/mutualExclusionDistributed/Lamport.mlw
+install_pkg RicartAgrawala examples/mutualExclusionDistributed/RicartAgrawala.mlw
+
 # mutualExclusionToken
 install_pkg oneToken        examples/mutualExclusionToken/oneToken.mlw
 
@@ -60,6 +65,12 @@ install_pkg mutual_exclusion_spec            wip/petersonN/refinement/mutual_exc
 install_pkg raft_msg                        examples/raft/raft_msg.mlw
 install_pkg raft_shm                        examples/raft/raft_shm.mlw
 install_pkg raft_refi                       examples/raft/raft_refi.mlw
+
+# wip/ricartAgrawala (student project: Cláudia Pinto, Patrícia Carvalho)
+# (moved to examples/mutualExclusionDistributed)
+
+# wip/lamport (student project: João Duarte, Luís Silva)
+# (moved to examples/mutualExclusionDistributed)
 
 echo "done. packages installed:"
 why3find list
