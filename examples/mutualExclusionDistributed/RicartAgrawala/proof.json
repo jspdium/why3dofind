@@ -2,34 +2,74 @@
   "profile": [],
   "proofs": {
     "Ricart_Agrawala": {
-      "allRepliesBeforeCS": { "prover": "cvc5@1.0.3", "time": 0.031 },
+      "csHasPriority": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "csNoReply": { "prover": "cvc5@1.0.3", "time": 0.025 },
       "enter_CS": {
         "tactic": "split_vc",
         "children": [
-          { "prover": "alt-ergo@2.4.2", "time": 0.035 },
-          { "prover": "cvc5@1.0.3", "time": 0.128 }
+          { "prover": "alt-ergo@2.4.2", "time": 0.029 },
+          {
+            "tactic": "split_vc",
+            "children": [
+              { "prover": "cvc5@1.0.3", "time": 0.022 },
+              {
+                "tactic": "inline_goal",
+                "children": [ { "prover": "cvc5@1.0.3", "time": 0.13 } ]
+              },
+              { "prover": "cvc5@1.0.3", "time": 0.032 }
+            ]
+          }
         ]
       },
-      "initWorld": { "prover": "alt-ergo@2.4.2", "time": 0.005 },
-      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "exclusive_pair": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "grant_Reply": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "alt-ergo@2.4.2", "time": 5.4 },
+          { "prover": "cvc5@1.0.3", "time": 0.023 }
+        ]
+      },
+      "initWorld": { "prover": "alt-ergo@2.4.2", "time": 0.008 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.011 },
       "initWorldC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.005 },
-      "leave_CS": { "prover": "cvc5@1.0.3", "time": 0.496 },
-      "mutualExclusion": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "leave_CS": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.04 },
+          { "prover": "cvc5@1.0.3", "time": 0.032 }
+        ]
+      },
+      "mutualExclusion": { "prover": "cvc5@1.0.3", "time": 0.023 },
       "mutualExclusion_by_refinement": {
         "prover": "cvc5@1.0.3",
-        "time": 0.012
+        "time": 0.009
       },
-      "refn": { "prover": "cvc5@1.0.3", "time": 0.012 },
-      "replySendOnlyIfNotCSOrRequesting": {
-        "prover": "cvc5@1.0.3",
-        "time": 0.025
+      "nonVacuous": { "prover": "cvc5@1.0.3", "time": 0.536 },
+      "prec_asym": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "recv_Request": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.019 },
+          { "prover": "cvc5@1.0.3", "time": 0.019 }
+        ]
       },
-      "reply_Receive": { "prover": "cvc5@1.0.3", "time": 1.5 },
-      "reply_Send": { "prover": "cvc5@1.0.3", "time": 0.131 },
-      "request_Receive": { "prover": "cvc5@1.0.3", "time": 0.044 },
-      "request_Send": { "prover": "cvc5@1.0.3", "time": 0.368 },
-      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.006 },
-      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.063 }
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.011 },
+      "repliesBeforeCS": { "prover": "cvc5@1.0.3", "time": 0.026 },
+      "send_Request": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.118 },
+          { "prover": "cvc5@1.0.3", "time": 0.018 }
+        ]
+      },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.012 },
+      "stepC'refn": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.017 },
+          { "prover": "cvc5@1.0.3", "time": 0.023 }
+        ]
+      }
     }
   }
 }

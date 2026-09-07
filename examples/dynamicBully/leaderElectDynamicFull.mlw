@@ -1,12 +1,32 @@
-(* Dynamic abstract leader election specification.
+(* Dynamic abstract leader election.
 
    Contribution by:
      João Gonçalves, Carlos Pina
 
-   This is the most abstract machine used by the full dynamic Bully model.
-   It does not know about Bully messages, timeouts, heartbeats, or IDs.
-   It only records which processes are alive and which process is leader.
+   The most abstract machine of the dynamic leader-election chain.  It
+   records only which processes are alive and which process is leader --
+   no process IDs, no messages, no timing.
+
+   State     aliveAbs, isLeader
+   Actions   crash        a process fails; if it was leader it stops being one
+             recover      a dead process comes back, and may clear the leader
+                          flag of one process l in the same step
+             elect        any alive process becomes leader, if there is none
+   Invariant a leader is alive; there is at most one leader
+
+   Limitations
+     - Election is unconstrained beyond "there is currently no leader".
+       The greatest-ID rule is introduced by the refining machine.
+     - Recovery and deposition happen in a single step.  This is an
+       atomicity choice standing in for "a returning process forces a new
+       election and the incumbent stands down"; the machine cannot express
+       the interval during which a displaced leader has not yet learned.
+       Taking l = h gives recovery that deposes nobody.
+     - Safety only.  Nothing here states that an election ever occurs, or
+       that a leaderless system stays leaderless for a bounded time.
+
 *)
+
 
 module LeaderElectDynamicFull
 
@@ -28,9 +48,6 @@ module LeaderElectDynamicFull
 
   predicate no_leader (w:world) =
     forall n : node. valid n -> not w.isLeader[n]
-
-  predicate some_alive (w:world) =
-    exists n : node. valid n /\ w.aliveAbs[n]
 
   predicate inv (w:world) =
     (forall i : node.
@@ -60,19 +77,21 @@ module LeaderElectDynamicFull
     { aliveAbs = w.aliveAbs[h <- false];
       isLeader = w.isLeader[h <- false] }
 
-  (* Recovery is abstract: the recovered process is alive but not elected by recovery. *)
-  predicate recover_enbld (w:world) (h:node) =
-    valid h /\ not w.aliveAbs[h]
+  (* Recovery, with no restriction on h.  The recovering process may
+     displace one incumbent l in the same step; see the revision note. *)
+  predicate recover_enbld (w:world) (h:node) (l:node) =
+    valid h /\ not w.aliveAbs[h] /\ valid l
 
-  let ghost function recover (w:world) (h:node) : world
-    requires { recover_enbld w h }
+  let ghost function recover (w:world) (h:node) (l:node) : world
+    requires { recover_enbld w h l }
     ensures  { inv w -> inv result }
   =
     { aliveAbs = w.aliveAbs[h <- true];
-      isLeader = w.isLeader }
+      isLeader = w.isLeader[l <- false] }
 
-  (* Abstract election: if there is no leader, any alive process may become leader.
-     The max-alive restriction is introduced in the intermediate machine. *)
+  (* Abstract election: if there is no leader, any alive process may become
+     leader.  The max-alive restriction is introduced in the intermediate
+     machine. *)
   predicate elect_enbld (w:world) (h:node) =
     valid h /\ w.aliveAbs[h] /\ no_leader w
 
@@ -86,8 +105,8 @@ module LeaderElectDynamicFull
   inductive stepind world world =
   | step_crash : forall w : world, h : node.
       crash_enbld w h -> stepind w (crash w h)
-  | step_recover : forall w : world, h : node.
-      recover_enbld w h -> stepind w (recover w h)
+  | step_recover : forall w : world, h l : node.
+      recover_enbld w h l -> stepind w (recover w h l)
   | step_elect : forall w : world, h : node.
       elect_enbld w h -> stepind w (elect w h)
 
@@ -109,14 +128,5 @@ module LeaderElectDynamicFull
     forall w : world, i j : node.
       reachable w -> valid i -> valid j ->
       w.isLeader[i] -> w.isLeader[j] -> i = j
-
-  goal crashedProcessIsNotLeaderAfterCrash :
-    forall w : world, h : node.
-      crash_enbld w h -> not (crash w h).isLeader[h]
-
-  goal ifNoLeaderAndAliveThenCanElectSomeone :
-    forall w : world.
-      no_leader w -> some_alive w ->
-      exists h : node. elect_enbld w h
 
 end

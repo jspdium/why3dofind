@@ -1,10 +1,34 @@
-(* Dynamic max-alive abstract leader election machine.
+(* Dynamic max-alive leader election.
 
    Contribution by:
      João Gonçalves, Carlos Pina
 
-   This machine refines LeaderElectDynamicFull by restricting election to
-   the alive process with greatest ID in the current state.
+   Refines LeaderElectDynamicFull.  Same state shape, plus static
+   injective process IDs, and election restricted to the alive process of
+   greatest ID.
+
+   State     aliveMax, isMaxAlive; id : node -> id, injective on valid nodes
+   Actions   crash, recover (as in the abstract machine),
+             elect_max    the max-alive process becomes leader, if there is
+                          no leader
+   Invariant every leader is the max-alive process.  Leader uniqueness is
+             not a separate conjunct: max_alive_unique gives it, since at
+             most one node can be max-alive.
+
+   max_alive_exists establishes, by an upward scan over 0 .. n_nodes, that
+   a max-alive node exists whenever some node is alive.  Without it the
+   election guard would never be shown satisfiable.
+
+   Limitations
+     - elect_max's guard quantifies over the whole alive set.  That is this
+       machine's purpose -- it specifies which process must be chosen -- and
+       is not a claim that a process can evaluate it locally.  The refining
+       machine has to discharge it from local information.
+     - No messages, no failure detection, no timing.
+     - Recovery/deposition atomicity is inherited from the abstract machine.
+     - Safety only, apart from noLeaderAndSomeAliveCanElect, which states
+       that an election is enabled -- not that it happens.
+
 *)
 
 module LeaderElectMaxAliveDynamicFull
@@ -36,13 +60,12 @@ module LeaderElectMaxAliveDynamicFull
     valid h /\ w.aliveMax[h] /\
     forall k : node. valid k -> w.aliveMax[k] -> id k <= id h
 
-  predicate no_alive_higher_C (w:world) (h:node) =
-    valid h /\ w.aliveMax[h] /\
-    forall k : node. valid k -> w.aliveMax[k] -> not (id h < id k)
-
-  lemma no_alive_higher_C_equiv_max :
-    forall w : world, h : node.
-      no_alive_higher_C w h -> is_max_alive_C w h
+  (* At most one node can be max-alive.  This is what makes leader
+     uniqueness a consequence of the max-alive invariant rather than a
+     separate conjunct that each action has to re-establish. *)
+  lemma max_alive_unique :
+    forall w : world, h1 h2 : node.
+      is_max_alive_C w h1 -> is_max_alive_C w h2 -> h1 = h2
 
   predicate no_leader_C (w:world) =
     forall n : node. valid n -> not w.isMaxAlive[n]
@@ -51,12 +74,50 @@ module LeaderElectMaxAliveDynamicFull
     exists n : node. valid n /\ w.aliveMax[n]
 
   predicate inv (w:world) =
-    (forall i : node.
-       valid i -> w.isMaxAlive[i] -> is_max_alive_C w i)
-    /\
-    (forall i j : node.
-       valid i -> valid j ->
-       w.isMaxAlive[i] -> w.isMaxAlive[j] -> i = j)
+    forall i : node.
+      valid i -> w.isMaxAlive[i] -> is_max_alive_C w i
+
+  lemma inv_unique_leader :
+    forall w : world, i j : node.
+      inv w -> valid i -> valid j ->
+      w.isMaxAlive[i] -> w.isMaxAlive[j] -> i = j
+
+  (* The concrete invariant implies the abstract one.  Used by the Bully
+     machine to close the second refinement step at the invariant level. *)
+  lemma inv_refines_abstract :
+    forall w : world.
+      inv w -> LeaderElectDynamicFull.inv (refn w)
+
+  (* ---------------------------------------------------------------- *)
+  (* Existence of a max-alive node                                    *)
+  (* ---------------------------------------------------------------- *)
+
+  (* scan w k b : the highest-ID alive node, given that b is alive and is
+     the best candidate among nodes below k. *)
+  let rec ghost function scan (w:world) (k:int) (b:node) : node
+    requires { 0 <= k <= n_nodes }
+    requires { valid b /\ w.aliveMax[b] }
+    requires { forall j : node. 0 <= j < k -> w.aliveMax[j] -> id j <= id b }
+    variant  { n_nodes - k }
+    ensures  { valid result /\ w.aliveMax[result] }
+    ensures  { forall j : node. valid j -> w.aliveMax[j] -> id j <= id result }
+  =
+    if k = n_nodes then b
+    else
+      let b' = if w.aliveMax[k] then (if id b < id k then k else b) else b in
+      scan w (k + 1) b'
+
+  let lemma max_alive_exists (w:world) (n:node)
+    requires { valid n }
+    requires { w.aliveMax[n] }
+    ensures  { exists h : node. is_max_alive_C w h }
+  =
+    let h = scan w 0 n in
+    assert { is_max_alive_C w h }
+
+  (* ---------------------------------------------------------------- *)
+  (* Machine                                                          *)
+  (* ---------------------------------------------------------------- *)
 
   predicate initWorld_p (w:world) =
     (forall n : node. valid n -> w.aliveMax[n] = true)
@@ -79,20 +140,21 @@ module LeaderElectMaxAliveDynamicFull
     { aliveMax   = w.aliveMax[h <- false];
       isMaxAlive = w.isMaxAlive[h <- false] }
 
-  (* Conservative recovery: if a leader already exists, a recovering process
-     must have a lower ID than that leader.  If there is no leader, recovery is
-     always allowed and a later election can choose the new maximum. *)
-  predicate recover_enbld (w:world) (h:node) =
-    valid h /\ not w.aliveMax[h] /\
-    (forall l : node. valid l -> w.isMaxAlive[l] -> id h < id l)
+  (* Unrestricted recovery.  h comes back up, and the incumbent l (if any)
+     is deposed in the same step.  The guard requires only that any leader
+     which is *not* deposed already outranks h, which is exactly what keeps
+     it max-alive afterwards. *)
+  predicate recover_enbld (w:world) (h:node) (l:node) =
+    valid h /\ not w.aliveMax[h] /\ valid l /\
+    (forall j : node. valid j -> w.isMaxAlive[j] -> j = l \/ id h <= id j)
 
-  let ghost function recover (w:world) (h:node) : world
-    requires { recover_enbld w h }
+  let ghost function recover (w:world) (h:node) (l:node) : world
+    requires { recover_enbld w h l }
     ensures  { inv w -> inv result }
     ensures  { inv w -> LeaderElectDynamicFull.stepind (refn w) (refn result) }
   =
     { aliveMax   = w.aliveMax[h <- true];
-      isMaxAlive = w.isMaxAlive }
+      isMaxAlive = w.isMaxAlive[l <- false] }
 
   predicate elect_max_enbld (w:world) (h:node) =
     is_max_alive_C w h /\ no_leader_C w
@@ -108,8 +170,8 @@ module LeaderElectMaxAliveDynamicFull
   inductive stepind world world =
   | step_crash : forall w : world, h : node.
       crash_enbld w h -> stepind w (crash w h)
-  | step_recover : forall w : world, h : node.
-      recover_enbld w h -> stepind w (recover w h)
+  | step_recover : forall w : world, h l : node.
+      recover_enbld w h l -> stepind w (recover w h l)
   | step_elect_max : forall w : world, h : node.
       elect_max_enbld w h -> stepind w (elect_max w h)
 
@@ -143,16 +205,11 @@ module LeaderElectMaxAliveDynamicFull
       reachableC w -> valid i -> valid j ->
       w.isMaxAlive[i] -> w.isMaxAlive[j] -> i = j
 
-  goal crashedProcessIsNotLeader :
-    forall w : world, h : node.
-      crash_enbld w h -> not (crash w h).isMaxAlive[h]
-
-  goal electMaxCreatesLeader :
-    forall w : world, h : node.
-      elect_max_enbld w h -> (elect_max w h).isMaxAlive[h]
-
-  goal maxAliveCanBeElectedWhenNoLeader :
-    forall w : world, h : node.
-      is_max_alive_C w h -> no_leader_C w -> elect_max_enbld w h
+  (* Genuine progress statement: it relies on max_alive_exists, not on
+     assuming a max-alive node into existence. *)
+  goal noLeaderAndSomeAliveCanElect :
+    forall w : world.
+      reachableC w -> no_leader_C w -> some_alive_C w ->
+      exists h : node. elect_max_enbld w h
 
 end

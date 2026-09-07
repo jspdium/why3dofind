@@ -2,97 +2,67 @@
   "profile": [],
   "proofs": {
     "BullyDynamicFull": {
-      "Inductiveness.initWorld'refn": {
-        "prover": "cvc5@1.0.3",
-        "time": 0.012
-      },
-      "Inductiveness.step'refn": { "prover": "cvc5@1.0.3", "time": 0.016 },
-      "Refinement.initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.018 },
-      "Refinement.initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.013 },
-      "Refinement.stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.017 },
-      "Refinement.stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.014 },
-      "allInboxMessagesWellFormed": { "prover": "cvc5@1.0.3", "time": 0.051 },
-      "all_inbox_ok_add_msg": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "allInboxMessagesWellFormed": { "prover": "cvc5@1.0.3", "time": 0.053 },
+      "all_inbox_ok_add_msg": { "prover": "cvc5@1.0.3", "time": 0.03 },
       "all_inbox_ok_remove_packet_at": {
         "prover": "cvc5@1.0.3",
-        "time": 0.024
+        "time": 0.028
       },
       "all_inbox_ok_remove_then_add": {
         "prover": "cvc5@1.0.3",
-        "time": 0.017
+        "time": 0.018
       },
-      "becomeLeaderCreatesLeader": { "prover": "cvc5@1.0.3", "time": 0.048 },
-      "become_leader": { "prover": "alt-ergo@2.4.2", "time": 0.063 },
-      "crash": { "prover": "cvc5@1.0.3", "time": 0.589 },
-      "crash_removes_all_leaders": { "prover": "cvc5@1.0.3", "time": 0.054 },
-      "crashedProcessIsNotLeader": { "prover": "cvc5@1.0.3", "time": 0.046 },
-      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.041 },
-      "is_max_alive_equiv_no_alive_higher": {
+      "become_leader": { "prover": "cvc5@1.0.3", "time": 0.099 },
+      "crash": { "prover": "cvc5@1.0.3", "time": 0.607 },
+      "detect_crash": { "prover": "cvc5@1.0.3", "time": 0.061 },
+      "detectorNeverSuspectsLiveProcess": {
         "prover": "cvc5@1.0.3",
-        "time": 0.011
+        "time": 0.055
       },
-      "is_max_alive_no_alive_higher": {
-        "prover": "cvc5@1.0.3",
-        "time": 0.015
-      },
-      "leaderCanSendCoordinator": { "prover": "cvc5@1.0.3", "time": 0.051 },
-      "leaderCanSendHeartbeat": { "prover": "cvc5@1.0.3", "time": 0.026 },
-      "leaderCrashRemovesLeader": { "prover": "cvc5@1.0.3", "time": 0.053 },
-      "leaderIsAlive": { "prover": "cvc5@1.0.3", "time": 0.05 },
-      "leaderIsMaxAlive": { "prover": "cvc5@1.0.3", "time": 0.049 },
-      "leader_still_max_after_crash_other": {
+      "fd_gives_max_alive": { "prover": "cvc5@1.0.3", "time": 0.033 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.047 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.01 },
+      "invHoldsAtTopLevel": { "prover": "cvc5@1.0.3", "time": 0.051 },
+      "inv_unique_leader": { "prover": "cvc5@1.0.3", "time": 0.031 },
+      "is_max_alive_refn": { "prover": "cvc5@1.0.3", "time": 0.025 },
+      "leaderIsAlive": { "prover": "cvc5@1.0.3", "time": 0.053 },
+      "leaderIsMaxAlive": { "prover": "cvc5@1.0.3", "time": 0.057 },
+      "max_alive_unique_bully": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "mem_add_msg_other": { "prover": "cvc5@1.0.3", "time": 0.023 },
+      "mem_add_msg_same": { "prover": "cvc5@1.0.3", "time": 0.025 },
+      "mem_remove_packet": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "no_leader_if_max_not_leader": {
         "prover": "cvc5@1.0.3",
         "time": 0.032
       },
-      "leader_still_max_after_recover": {
-        "prover": "cvc5@1.0.3",
-        "time": 0.035
+      "no_leader_refn": { "prover": "cvc5@1.0.3", "time": 0.017 },
+      "nonVacuous": { "prover": "cvc5@1.0.3", "time": 0.421 },
+      "recover": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 18.6 },
+          { "prover": "alt-ergo@2.4.2", "time": 0.027 }
+        ]
       },
-      "leader_unique_against_h": { "prover": "cvc5@1.0.3", "time": 0.049 },
-      "maxAliveCanBecomeLeaderWhenElectingAndNoLeader": {
-        "prover": "cvc5@1.0.3",
-        "time": 0.049
-      },
-      "maxAliveElectingHasLeaderSuccessor": {
-        "prover": "cvc5@1.0.3",
-        "time": 0.062
-      },
-      "mem_add_msg_other": { "prover": "cvc5@1.0.3", "time": 0.022 },
-      "mem_add_msg_same": { "prover": "cvc5@1.0.3", "time": 0.024 },
-      "mem_remove_packet": { "prover": "cvc5@1.0.3", "time": 0.019 },
-      "noLeaderAliveCanReachElectionStartLocally": {
-        "prover": "cvc5@1.0.3",
-        "time": 0.05
-      },
-      "noLeaderAndAliveCanSuspect": { "prover": "cvc5@1.0.3", "time": 0.026 },
-      "no_alive_higher_is_max": { "prover": "cvc5@1.0.3", "time": 0.015 },
-      "ok_packet_coordinator": { "prover": "cvc5@1.0.3", "time": 0.02 },
-      "ok_packet_election": { "prover": "cvc5@1.0.3", "time": 0.02 },
-      "ok_packet_heartbeat": { "prover": "cvc5@1.0.3", "time": 0.02 },
-      "ok_packet_ok": { "prover": "cvc5@1.0.3", "time": 0.02 },
-      "onlyCurrentMaxCanBecomeLeader": {
-        "prover": "cvc5@1.0.3",
-        "time": 0.048
-      },
-      "recover": { "prover": "cvc5@1.0.3", "time": 1.9 },
-      "recv_coord": { "prover": "cvc5@1.0.3", "time": 0.079 },
-      "recv_election": { "prover": "cvc5@1.0.3", "time": 0.06 },
-      "recv_heartbeat": { "prover": "cvc5@1.0.3", "time": 0.079 },
-      "recv_ok": { "prover": "cvc5@1.0.3", "time": 0.055 },
+      "recv_coord": { "prover": "cvc5@1.0.3", "time": 0.049 },
+      "recv_election": { "prover": "cvc5@1.0.3", "time": 0.074 },
+      "recv_heartbeat": { "prover": "cvc5@1.0.3", "time": 0.049 },
+      "recv_ok": { "prover": "cvc5@1.0.3", "time": 0.048 },
       "remove_packet": { "prover": "cvc5@1.0.3", "time": 0.008 },
-      "send_coord": { "prover": "cvc5@1.0.3", "time": 0.043 },
-      "send_election": { "prover": "cvc5@1.0.3", "time": 0.048 },
-      "send_heartbeat": { "prover": "cvc5@1.0.3", "time": 0.125 },
-      "start_election": { "prover": "cvc5@1.0.3", "time": 0.053 },
-      "step": { "prover": "cvc5@1.0.3", "time": 0.17 },
-      "suspectedAliveProcessCanStartElection": {
+      "send_coord": { "prover": "cvc5@1.0.3", "time": 0.035 },
+      "send_election": { "prover": "cvc5@1.0.3", "time": 0.056 },
+      "send_heartbeat": { "prover": "cvc5@1.0.3", "time": 0.038 },
+      "start_election": { "prover": "cvc5@1.0.3", "time": 0.042 },
+      "step": { "prover": "alt-ergo@2.4.2", "time": 0.036 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "suspectingAllHigherCanBecomeLeader": {
         "prover": "cvc5@1.0.3",
-        "time": 0.026
+        "time": 56.0
       },
-      "timeoutCreatesSuspicion": { "prover": "cvc5@1.0.3", "time": 0.047 },
-      "timeout_suspect": { "prover": "cvc5@1.0.3", "time": 0.027 },
-      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.049 },
-      "uniqueLeader_AbstractView": { "prover": "cvc5@1.0.3", "time": 0.056 }
+      "uniqueLeader": { "prover": "cvc5@1.0.3", "time": 0.055 },
+      "want_election": { "prover": "cvc5@1.0.3", "time": 0.038 }
     }
   }
 }

@@ -1,21 +1,65 @@
-(* Full dynamic Bully model.
+(* Bully leader election with crash and recovery.
 
    Contribution by:
      João Gonçalves, Carlos Pina
 
-   Compared with the initial Bully model, this version adds:
-     - dynamic failures: alive is part of the world;
-     - recovery, conservatively restricted when a lower leader already exists;
-     - per-process inboxes instead of one global network list;
-     - message consumption when a message is received;
-     - abstract failure detection through suspicion;
-     - heartbeat messages;
-     - local progress properties for recovery after leader failure;
-     - refinement to LeaderElectMaxAliveDynamicFull and then to
-       LeaderElectDynamicFull.
+   Refines LeaderElectMaxAliveDynamicFull, and hence -- composed through
+   invHoldsAtTopLevel -- LeaderElectDynamicFull.
 
-   This file is intentionally ambitious.  It is meant as a strong next version
-   of the project, not as a minimal extension.
+   State     st              per-process status: Idle, Electing, Waiting,
+                             Normal, Crashed
+             alive, leader
+             inbox           per-process queue of packets, each carrying
+                             src, dst and kind (Election, Ok, Coordinator,
+                             Heartbeat)
+             suspectNoLeader h wants an election
+             suspectedDead   h's failure-detector view of each process
+
+   Actions   crash, recover, detect_crash, want_election, start_election,
+             send_election, recv_election, recv_ok, become_leader,
+             send_coord, recv_coord, send_heartbeat, recv_heartbeat
+
+   Every guard reads only the acting process's own state and the message it
+   consumes; detect_crash is the sole exception.  In particular
+   become_leader requires just that h is Electing, is not already leader,
+   and suspects every higher-ID process.
+
+   Invariant every leader is alive and max-alive; the failure detector
+             never suspects a live process (fd_accurate); a crashed process
+             is not leader, is not requesting an election, and is in state
+             Crashed; every queued message is well-formed.
+
+   That a new leader really is max-alive follows from fd_accurate; that no
+   other leader exists follows from max-aliveness and its uniqueness.
+
+   Limitations
+     - fd_accurate is an assumption, not a theorem.  It is the accuracy
+       half of a perfect failure detector, which no asynchronous protocol
+       can derive, and Bully's safety depends on it.  detect_crash is the
+       only action inspecting another process's aliveness, so the
+       assumption is confined to one guard and one invariant conjunct, and
+       is checkable as detectorNeverSuspectsLiveProcess.
+     - Recovery deposes an outranked incumbent atomically, in place of the
+       Coordinator round that would inform the old leader.  This is a
+       synchrony assumption: "always at most one leader" is not an
+       asynchronous safety property of Bully, since a displaced leader that
+       has not received the new Coordinator still believes it leads.
+       Accordingly recv_coord does not clear the leader flag.
+     - Messages carry genuine state-machine content -- an Ok moves a loser
+       out of Electing and so disables become_leader for it -- but they are
+       not what the safety proof rests on.
+     - No timeouts, hence no liveness.  Nothing models the delay that makes
+       "no Ok has arrived" meaningful, so deadlock-freedom and eventual
+       election are out of scope; only one-step progress is stated
+       (suspectingAllHigherCanBecomeLeader).
+     - Channels are reliable: messages are never lost or spontaneously
+       duplicated, delivery order within an inbox is arbitrary, and there
+       are no partitions.  Stale messages may be consumed.
+     - Packets carry no round or term number and are compared by src, dst
+       and kind alone, so a message from an earlier election is
+       indistinguishable from a current one.
+     - n_nodes is fixed; IDs are static and injective.
+
 *)
 
 module BullyDynamicFull
@@ -48,11 +92,14 @@ module BullyDynamicFull
   }
 
   type world = {
-    st      : map node status;
-    alive   : map node bool;
-    leader  : map node bool;
-    inbox   : map node (list packet);
-    suspect : map node bool;
+    st              : map node status;
+    alive           : map node bool;
+    leader          : map node bool;
+    inbox           : map node (list packet);
+    suspectNoLeader : map node bool;
+      (* h believes coordination is missing and wants an election *)
+    suspectedDead   : map node (map node bool);
+      (* suspectedDead[h][d] : h's failure detector suspects d has crashed *)
   }
 
   let function refn (w:world) : LeaderElectMaxAliveDynamicFull.world =
@@ -65,29 +112,28 @@ module BullyDynamicFull
     valid h /\ w.alive[h] /\
     forall k : node. valid k -> w.alive[k] -> id k <= id h
 
-  predicate no_alive_higher (w:world) (h:node) =
-    valid h /\ w.alive[h] /\
-    forall k : node. valid k -> w.alive[k] -> not (id h < id k)
-
-  lemma no_alive_higher_is_max :
-    forall w : world, h : node.
-      no_alive_higher w h -> is_max_alive w h
-
-  (* se h é o maior vivo no estado atual, então não há vivo com ID maior *)
-  lemma is_max_alive_no_alive_higher :
-    forall w : world, h : node.
-      is_max_alive w h -> no_alive_higher w h
-
-  (* junta os dois sentidos: ser maior vivo equivale a não existir vivo com ID maior *)
-  lemma is_max_alive_equiv_no_alive_higher :
-    forall w : world, h : node.
-      is_max_alive w h <-> no_alive_higher w h
-
   predicate no_leader (w:world) =
     forall n : node. valid n -> not w.leader[n]
 
-  predicate some_alive (w:world) =
-    exists n : node. valid n /\ w.alive[n]
+  (* At most one node can be max-alive; this is what makes leader
+     uniqueness a consequence of the max-alive invariant. *)
+  lemma max_alive_unique_bully :
+    forall w : world, h1 h2 : node.
+      is_max_alive w h1 -> is_max_alive w h2 -> h1 = h2
+
+  (* Bridges to the abstract machine's vocabulary, so the refinement
+     obligations do not depend on the prover unfolding refn by itself. *)
+  lemma is_max_alive_refn :
+    forall w : world, h : node.
+      is_max_alive w h <-> is_max_alive_C (refn w) h
+
+  lemma no_leader_refn :
+    forall w : world.
+      no_leader w <-> no_leader_C (refn w)
+
+  (* ---------------------------------------------------------------- *)
+  (* Messages                                                         *)
+  (* ---------------------------------------------------------------- *)
 
   let function same_kind (a:msg_kind) (b:msg_kind) : bool =
     match a with
@@ -104,9 +150,9 @@ module BullyDynamicFull
   let function same_packet (p:packet) (q:packet) : bool =
     p.src = q.src && p.dst = q.dst && same_kind p.kind q.kind
 
-  (* remove exactly one occurrence of a packet from a list, if present.
-     We use a Boolean function instead of a logical predicate, because this
-     function is used in an executable/ghost-program expression. *)
+  (* Remove exactly one occurrence of a packet from a list, if present.
+     A Boolean function rather than a logical predicate, because it is used
+     in a ghost program expression. *)
   let rec function remove_packet (p:packet) (l:list packet) : list packet
     variant { l }
   = match l with
@@ -114,7 +160,8 @@ module BullyDynamicFull
     | Cons q r -> if same_packet q p then r else Cons q (remove_packet p r)
     end
 
-  (* se uma mensagem aparece depois de remover outra da lista, então já aparecia na lista original *)
+  (* If a message is present after removing another one, it was already
+     present in the original list. *)
   let rec lemma mem_remove_packet (p q : packet) (l : list packet)
     ensures { mem q (remove_packet p l) -> mem q l }
     variant { l }
@@ -132,8 +179,7 @@ module BullyDynamicFull
 
   (* Structural validity of messages.  This intentionally does not require
      src/dst to be alive in the current state, because a process may crash
-     after sending a message.  Receive guards decide which stale messages may
-     actually be consumed. *)
+     after sending a message. *)
   predicate ok_packet (p:packet) =
     valid p.src /\ valid p.dst /\
     match p.kind with
@@ -143,47 +189,23 @@ module BullyDynamicFull
     | Heartbeat -> p.dst <> p.src
     end
 
-  (* uma mensagem Election é bem formada quando sobe para um ID maior *)
-  lemma ok_packet_election :
-    forall h d : node.
-      valid h -> valid d -> id h < id d ->
-      ok_packet { src = h; dst = d; kind = Election }
-
-  (* uma mensagem Ok é bem formada quando vem de um ID maior para um ID menor *)
-  lemma ok_packet_ok :
-    forall h d : node.
-      valid h -> valid d -> id d < id h ->
-      ok_packet { src = h; dst = d; kind = Ok }
-
-  (* uma mensagem Coordinator é bem formada quando vem de um ID maior para um ID menor *)
-  lemma ok_packet_coordinator :
-    forall h d : node.
-      valid h -> valid d -> id d < id h ->
-      ok_packet { src = h; dst = d; kind = Coordinator }
-
-  (* uma mensagem Heartbeat é bem formada quando emissor e destinatário são válidos e diferentes *)
-  lemma ok_packet_heartbeat :
-    forall h d : node.
-      valid h -> valid d -> h <> d ->
-      ok_packet { src = h; dst = d; kind = Heartbeat }
-
   predicate all_inbox_ok (w:world) =
     forall n : node, p : packet.
       valid n -> mem p w.inbox[n] -> ok_packet p
 
-  (* se vejo a inbox do destinatário depois de add_msg, a mensagem pode ser a nova ou uma antiga *)
+  (* Looking at the recipient's inbox after add_msg, a message is either the
+     new one or one that was already there. *)
   lemma mem_add_msg_same :
     forall ib : map node (list packet), d : node, p q : packet.
       mem q (add_msg ib d p)[d] -> q = p \/ mem q ib[d]
 
-  (* se vejo a inbox de outro processo depois de add_msg, ela não mudou *)
+  (* Any other process's inbox is unchanged by add_msg. *)
   lemma mem_add_msg_other :
     forall ib : map node (list packet), d n : node, p q : packet.
       n <> d ->
       mem q (add_msg ib d p)[n] ->
       mem q ib[n]
 
-  (* se adiciono uma mensagem bem formada a uma inbox bem formada, todas as inboxes continuam bem formadas *)
   lemma all_inbox_ok_add_msg :
     forall w : world, d : node, p : packet.
       valid d ->
@@ -191,14 +213,12 @@ module BullyDynamicFull
       ok_packet p ->
       all_inbox_ok { w with inbox = add_msg w.inbox d p }
 
-  (* se removo uma mensagem de uma inbox bem formada, todas as mensagens que ficam continuam bem formadas *)
   lemma all_inbox_ok_remove_packet_at :
     forall w : world, h : node, p : packet.
       valid h ->
       all_inbox_ok w ->
       all_inbox_ok { w with inbox = w.inbox[h <- remove_packet p w.inbox[h]] }
 
-  (* se removo uma mensagem e depois adiciono uma nova bem formada, as inboxes continuam bem formadas *)
   lemma all_inbox_ok_remove_then_add :
     forall w : world, h d : node, oldp newp : packet.
       valid h ->
@@ -210,22 +230,49 @@ module BullyDynamicFull
           add_msg (w.inbox[h <- remove_packet oldp w.inbox[h]]) d newp
       }
 
+  (* ---------------------------------------------------------------- *)
+  (* Inductive invariant                                              *)
+  (* ---------------------------------------------------------------- *)
+
+  (* Accuracy of the failure detector: nobody is suspected while alive.
+     See note 2 in the header -- this is an assumption discharged by the
+     detect_crash guard, not a derived property. *)
+  predicate fd_accurate (w:world) =
+    forall h d : node.
+      valid h -> valid d -> w.suspectedDead[h][d] -> not w.alive[d]
+
   predicate inv (w:world) =
-    (* any concrete leader is alive and is the current max alive process *)
+    (* any leader is alive and is the current max alive process *)
     (forall i : node.
        valid i -> w.leader[i] -> is_max_alive w i)
     /\
-    (* at most one leader *)
-    (forall i j : node.
-       valid i -> valid j -> w.leader[i] -> w.leader[j] -> i = j)
+    fd_accurate w
     /\
-    (* crashed processes are not leaders and are not suspicious/electing *)
+    (* crashed processes are not leaders, are not asking for an election,
+       and are in the Crashed state *)
     (forall i : node.
        valid i -> not w.alive[i] ->
-         not w.leader[i] /\ not w.suspect[i] /\ w.st[i] = Crashed)
+       not w.leader[i] /\ not w.suspectNoLeader[i] /\ w.st[i] = Crashed)
     /\
     (* every message currently queued in any inbox is well-formed *)
     all_inbox_ok w
+
+  (* Uniqueness is derived, not assumed. *)
+  lemma inv_unique_leader :
+    forall w : world, i j : node.
+      inv w -> valid i -> valid j -> w.leader[i] -> w.leader[j] -> i = j
+
+  (* The two derivations that replace the old global election guard. *)
+  lemma fd_gives_max_alive :
+    forall w : world, h : node.
+      inv w -> valid h -> w.alive[h] ->
+      (forall d : node. valid d -> id h < id d -> w.suspectedDead[h][d]) ->
+      is_max_alive w h
+
+  lemma no_leader_if_max_not_leader :
+    forall w : world, h : node.
+      inv w -> valid h -> is_max_alive w h -> not w.leader[h] ->
+      no_leader w
 
   predicate initWorld_p (w:world) =
     (forall n : node. valid n -> w.st[n] = Idle)
@@ -234,7 +281,9 @@ module BullyDynamicFull
     /\
     (forall n : node. valid n -> w.leader[n] = false)
     /\
-    (forall n : node. valid n -> w.suspect[n] = false)
+    (forall n : node. valid n -> w.suspectNoLeader[n] = false)
+    /\
+    (forall n d : node. valid n -> valid d -> w.suspectedDead[n][d] = false)
     /\
     (forall n : node. valid n -> w.inbox[n] = Nil)
 
@@ -243,9 +292,13 @@ module BullyDynamicFull
     ensures { result -> LeaderElectMaxAliveDynamicFull.initWorld (refn w) }
   = initWorld_p w
 
-  (* Dynamic failure.  If the crashed process was leader, it stops being leader.
-     Its own inbox is discarded, but old messages already sent to others may
-     remain queued as stale messages. *)
+  (* ---------------------------------------------------------------- *)
+  (* Failures and recovery                                            *)
+  (* ---------------------------------------------------------------- *)
+
+  (* Dynamic failure.  If the crashed process was leader, it stops being
+     leader.  Its own inbox is discarded, but messages it already sent to
+     others may remain queued as stale messages. *)
   predicate crash_enbld (w:world) (h:node) =
     valid h /\ w.alive[h]
 
@@ -254,67 +307,73 @@ module BullyDynamicFull
     ensures  { inv w -> inv result }
     ensures  { inv w -> LeaderElectMaxAliveDynamicFull.stepind (refn w) (refn result) }
   =
-    { st      = w.st[h <- Crashed];
-      alive   = w.alive[h <- false];
-      leader  = w.leader[h <- false];
-      inbox   = w.inbox[h <- Nil];
-      suspect = w.suspect[h <- false] }
+    { st              = w.st[h <- Crashed];
+      alive           = w.alive[h <- false];
+      leader          = w.leader[h <- false];
+      inbox           = w.inbox[h <- Nil];
+      suspectNoLeader = w.suspectNoLeader[h <- false];
+      suspectedDead   = w.suspectedDead }
 
-  (* Conservative recovery.  If a leader exists, the recovered process must have
-     a lower ID than that leader, otherwise the current leader would no longer be
-     max-alive.  If there is no leader, recovery is always allowed. *)
-  predicate recover_enbld (w:world) (h:node) =
-    valid h /\ not w.alive[h] /\
-    (forall l : node. valid l -> w.leader[l] -> id h < id l)
+  (* Recovery, unrestricted in h.  The incumbent l is deposed in the same
+     step; the guard only requires that a leader which survives already
+     outranks h.  Clearing column h of every detector view is what keeps
+     fd_accurate inductive. *)
+  predicate recover_enbld (w:world) (h:node) (l:node) =
+    valid h /\ not w.alive[h] /\ valid l /\
+    (forall j : node. valid j -> w.leader[j] -> j = l \/ id h <= id j)
 
-  let ghost function recover (w:world) (h:node) : world
-    requires { recover_enbld w h }
+  let ghost function recover (w:world) (h:node) (l:node) : world
+    requires { recover_enbld w h l }
     ensures  { inv w -> inv result }
     ensures  { inv w -> LeaderElectMaxAliveDynamicFull.stepind (refn w) (refn result) }
   =
-    { st      = w.st[h <- Idle];
-      alive   = w.alive[h <- true];
-      leader  = w.leader;
-      inbox   = w.inbox[h <- Nil];
-      suspect = w.suspect[h <- no_leader w] }
+    { st              = w.st[h <- Idle];
+      alive           = w.alive[h <- true];
+      leader          = w.leader[l <- false];
+      inbox           = w.inbox[h <- Nil];
+      suspectNoLeader = w.suspectNoLeader[h <- true];
+      suspectedDead   = fun i -> (w.suspectedDead[i])[h <- false] }
 
-  (* se outro processo já era líder antes do crash, continua a ser o maior vivo depois do crash *)
-  lemma leader_still_max_after_crash_other :
-    forall w : world, h l : node.
-      inv w ->
-      crash_enbld w h ->
-      valid l ->
-      w.leader[l] ->
-      l <> h ->
-      is_max_alive (crash w h) l
+  (* Failure detector oracle.  The only action that inspects another
+     process's aliveness; its output is local to h. *)
+  predicate detect_crash_enbld (w:world) (h d:node) =
+    valid h /\ valid d /\ h <> d /\ w.alive[h] /\ not w.alive[d]
 
-  (* se um processo recupera respeitando a guarda de recover, o líder antigo continua a ser o maior vivo *)
-  lemma leader_still_max_after_recover :
-    forall w : world, h l : node.
-      inv w ->
-      recover_enbld w h ->
-      valid l ->
-      w.leader[l] ->
-      is_max_alive (recover w h) l
-
-  (* Abstract timeout/failure detector.  If there is no leader, an alive process
-     may suspect that coordination is missing and start an election. *)
-  predicate timeout_suspect_enbld (w:world) (h:node) =
-    valid h /\ w.alive[h] /\ not w.leader[h] /\ no_leader w
-
-  let ghost function timeout_suspect (w:world) (h:node) : world
-    requires { timeout_suspect_enbld w h }
+  let ghost function detect_crash (w:world) (h d:node) : world
+    requires { detect_crash_enbld w h d }
     ensures  { inv w -> inv result }
     ensures  { refn result = refn w }
   =
-    { st      = w.st;
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = w.inbox;
-      suspect = w.suspect[h <- true] }
+    { st              = w.st;
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = w.inbox;
+      suspectNoLeader = w.suspectNoLeader;
+      suspectedDead   = w.suspectedDead[h <- (w.suspectedDead[h])[d <- true]] }
+
+  (* ---------------------------------------------------------------- *)
+  (* Election                                                         *)
+  (* ---------------------------------------------------------------- *)
+
+  (* An alive non-leader may decide coordination is missing.  No global
+     read: a process is free to call an election at any time. *)
+  predicate want_election_enbld (w:world) (h:node) =
+    valid h /\ w.alive[h] /\ not w.leader[h]
+
+  let ghost function want_election (w:world) (h:node) : world
+    requires { want_election_enbld w h }
+    ensures  { inv w -> inv result }
+    ensures  { refn result = refn w }
+  =
+    { st              = w.st;
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = w.inbox;
+      suspectNoLeader = w.suspectNoLeader[h <- true];
+      suspectedDead   = w.suspectedDead }
 
   predicate start_election_enbld (w:world) (h:node) =
-    valid h /\ w.alive[h] /\ w.suspect[h] /\
+    valid h /\ w.alive[h] /\ w.suspectNoLeader[h] /\
     (w.st[h] = Idle \/ w.st[h] = Normal \/ w.st[h] = Waiting)
 
   let ghost function start_election (w:world) (h:node) : world
@@ -322,14 +381,15 @@ module BullyDynamicFull
     ensures  { inv w -> inv result }
     ensures  { refn result = refn w }
   =
-    { st      = w.st[h <- Electing];
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = w.inbox;
-      suspect = w.suspect[h <- false] }
+    { st              = w.st[h <- Electing];
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = w.inbox;
+      suspectNoLeader = w.suspectNoLeader[h <- false];
+      suspectedDead   = w.suspectedDead }
 
   predicate send_election_enbld (w:world) (h d:node) =
-    valid h /\ valid d /\ w.alive[h] /\ w.alive[d] /\
+    valid h /\ valid d /\ w.alive[h] /\
     w.st[h] = Electing /\ id h < id d
 
   let ghost function send_election (w:world) (h d:node) : world
@@ -338,11 +398,12 @@ module BullyDynamicFull
     ensures  { refn result = refn w }
   =
     let p = { src = h; dst = d; kind = Election } in
-    { st      = w.st;
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = add_msg w.inbox d p;
-      suspect = w.suspect }
+    { st              = w.st;
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = add_msg w.inbox d p;
+      suspectNoLeader = w.suspectNoLeader;
+      suspectedDead   = w.suspectedDead }
 
   predicate recv_election_enbld (w:world) (h:node) (p:packet) =
     valid h /\ w.alive[h] /\
@@ -356,12 +417,15 @@ module BullyDynamicFull
   =
     let ib1 = w.inbox[h <- remove_packet p w.inbox[h]] in
     let reply = { src = h; dst = p.src; kind = Ok } in
-    { st      = w.st[h <- Electing];
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = add_msg ib1 p.src reply;
-      suspect = w.suspect }
+    { st              = w.st[h <- Electing];
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = add_msg ib1 p.src reply;
+      suspectNoLeader = w.suspectNoLeader;
+      suspectedDead   = w.suspectedDead }
 
+  (* Receiving an Ok takes h out of Electing, which disables become_leader
+     for h.  This is the mechanism by which losing an election matters. *)
   predicate recv_ok_enbld (w:world) (h:node) (p:packet) =
     valid h /\ w.alive[h] /\
     mem p w.inbox[h] /\
@@ -372,31 +436,35 @@ module BullyDynamicFull
     ensures  { inv w -> inv result }
     ensures  { refn result = refn w }
   =
-    { st      = w.st[h <- Waiting];
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = w.inbox[h <- remove_packet p w.inbox[h]];
-      suspect = w.suspect }
+    { st              = w.st[h <- Waiting];
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = w.inbox[h <- remove_packet p w.inbox[h]];
+      suspectNoLeader = w.suspectNoLeader;
+      suspectedDead   = w.suspectedDead }
 
+  (* Local guard: h is electing, is not already leader, and its detector
+     suspects every higher-ID node.  That h is in fact max-alive, and that
+     nobody else leads, are consequences of the invariant. *)
   predicate become_leader_enbld (w:world) (h:node) =
     valid h /\ w.alive[h] /\
-    w.st[h] = Electing /\
-    no_alive_higher w h /\
-    no_leader w
+    w.st[h] = Electing /\ not w.leader[h] /\
+    (forall d : node. valid d -> id h < id d -> w.suspectedDead[h][d])
 
   let ghost function become_leader (w:world) (h:node) : world
     requires { become_leader_enbld w h }
     ensures  { inv w -> inv result }
     ensures  { inv w -> LeaderElectMaxAliveDynamicFull.stepind (refn w) (refn result) }
   =
-    { st      = w.st[h <- Normal];
-      alive   = w.alive;
-      leader  = w.leader[h <- true];
-      inbox   = w.inbox;
-      suspect = w.suspect[h <- false] }
+    { st              = w.st[h <- Normal];
+      alive           = w.alive;
+      leader          = w.leader[h <- true];
+      inbox           = w.inbox;
+      suspectNoLeader = w.suspectNoLeader[h <- false];
+      suspectedDead   = w.suspectedDead }
 
   predicate send_coord_enbld (w:world) (h d:node) =
-    valid h /\ valid d /\ w.alive[h] /\ w.alive[d] /\
+    valid h /\ valid d /\ w.alive[h] /\
     w.leader[h] /\ id d < id h
 
   let ghost function send_coord (w:world) (h d:node) : world
@@ -405,32 +473,35 @@ module BullyDynamicFull
     ensures  { refn result = refn w }
   =
     let p = { src = h; dst = d; kind = Coordinator } in
-    { st      = w.st;
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = add_msg w.inbox d p;
-      suspect = w.suspect }
+    { st              = w.st;
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = add_msg w.inbox d p;
+      suspectNoLeader = w.suspectNoLeader;
+      suspectedDead   = w.suspectedDead }
 
+  (* Local guard: h consumes any Coordinator addressed to it, including a
+     stale one from a leader that has since crashed. *)
   predicate recv_coord_enbld (w:world) (h:node) (p:packet) =
     valid h /\ w.alive[h] /\
     mem p w.inbox[h] /\
-    p.dst = h /\ p.kind = Coordinator /\
-    w.alive[p.src] /\ w.leader[p.src]
+    p.dst = h /\ p.kind = Coordinator
 
   let ghost function recv_coord (w:world) (h:node) (p:packet) : world
     requires { recv_coord_enbld w h p }
     ensures  { inv w -> inv result }
     ensures  { refn result = refn w }
   =
-    { st      = w.st[h <- Normal];
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = w.inbox[h <- remove_packet p w.inbox[h]];
-      suspect = w.suspect[h <- false] }
+    { st              = w.st[h <- Normal];
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = w.inbox[h <- remove_packet p w.inbox[h]];
+      suspectNoLeader = w.suspectNoLeader[h <- false];
+      suspectedDead   = w.suspectedDead }
 
   predicate send_heartbeat_enbld (w:world) (h d:node) =
     valid h /\ valid d /\ h <> d /\
-    w.alive[h] /\ w.alive[d] /\ w.leader[h]
+    w.alive[h] /\ w.leader[h]
 
   let ghost function send_heartbeat (w:world) (h d:node) : world
     requires { send_heartbeat_enbld w h d }
@@ -438,36 +509,43 @@ module BullyDynamicFull
     ensures  { refn result = refn w }
   =
     let p = { src = h; dst = d; kind = Heartbeat } in
-    { st      = w.st;
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = add_msg w.inbox d p;
-      suspect = w.suspect }
+    { st              = w.st;
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = add_msg w.inbox d p;
+      suspectNoLeader = w.suspectNoLeader;
+      suspectedDead   = w.suspectedDead }
 
   predicate recv_heartbeat_enbld (w:world) (h:node) (p:packet) =
     valid h /\ w.alive[h] /\
     mem p w.inbox[h] /\
-    p.dst = h /\ p.kind = Heartbeat /\
-    w.alive[p.src] /\ w.leader[p.src]
+    p.dst = h /\ p.kind = Heartbeat
 
   let ghost function recv_heartbeat (w:world) (h:node) (p:packet) : world
     requires { recv_heartbeat_enbld w h p }
     ensures  { inv w -> inv result }
     ensures  { refn result = refn w }
   =
-    { st      = w.st[h <- Normal];
-      alive   = w.alive;
-      leader  = w.leader;
-      inbox   = w.inbox[h <- remove_packet p w.inbox[h]];
-      suspect = w.suspect[h <- false] }
+    { st              = w.st[h <- Normal];
+      alive           = w.alive;
+      leader          = w.leader;
+      inbox           = w.inbox[h <- remove_packet p w.inbox[h]];
+      suspectNoLeader = w.suspectNoLeader[h <- false];
+      suspectedDead   = w.suspectedDead }
+
+  (* ---------------------------------------------------------------- *)
+  (* Transition relation                                              *)
+  (* ---------------------------------------------------------------- *)
 
   inductive stepind world world =
   | step_crash : forall w : world, h : node.
       crash_enbld w h -> stepind w (crash w h)
-  | step_recover : forall w : world, h : node.
-      recover_enbld w h -> stepind w (recover w h)
-  | step_timeout : forall w : world, h : node.
-      timeout_suspect_enbld w h -> stepind w (timeout_suspect w h)
+  | step_recover : forall w : world, h l : node.
+      recover_enbld w h l -> stepind w (recover w h l)
+  | step_detect : forall w : world, h d : node.
+      detect_crash_enbld w h d -> stepind w (detect_crash w h d)
+  | step_want : forall w : world, h : node.
+      want_election_enbld w h -> stepind w (want_election w h)
   | step_start : forall w : world, h : node.
       start_election_enbld w h -> stepind w (start_election w h)
   | step_send_election : forall w : world, h d : node.
@@ -493,13 +571,7 @@ module BullyDynamicFull
                               \/ LeaderElectMaxAliveDynamicFull.step (refn w1) (refn w2) }
   = stepind w1 w2
 
-  clone inductiveness.Inductiveness with
-    type world = world,
-    predicate inv = inv,
-    val initWorld = initWorld,
-    val step = step
-
-  clone refinement.Refinement with
+  clone export refinement.Refinement with
     type worldC = world,
     type worldA = LeaderElectMaxAliveDynamicFull.world,
     val refn = refn,
@@ -509,6 +581,10 @@ module BullyDynamicFull
     val initWorldA = LeaderElectMaxAliveDynamicFull.initWorld,
     val stepC = step,
     val stepA = LeaderElectMaxAliveDynamicFull.step
+
+  (* ---------------------------------------------------------------- *)
+  (* Safety properties                                                *)
+  (* ---------------------------------------------------------------- *)
 
   goal leaderIsAlive :
     forall w : world, i : node.
@@ -523,103 +599,70 @@ module BullyDynamicFull
       reachableC w -> valid i -> valid j ->
       w.leader[i] -> w.leader[j] -> i = j
 
-  goal uniqueLeader_AbstractView :
-    forall w : world, i j : node.
-      reachableC w -> valid i -> valid j ->
-      (fullrefn w).isLeader[i] -> (fullrefn w).isLeader[j] -> i = j
+  (* The failure-detector assumption, stated as a checkable property of
+     every reachable state. *)
+  goal detectorNeverSuspectsLiveProcess :
+    forall w : world, h d : node.
+      reachableC w -> valid h -> valid d ->
+      w.suspectedDead[h][d] -> not w.alive[d]
 
   goal allInboxMessagesWellFormed :
     forall w : world, n : node, p : packet.
       reachableC w -> valid n -> mem p w.inbox[n] -> ok_packet p
 
-  goal crashedProcessIsNotLeader :
+  (* Composed refinement: the top-level machine's invariant holds of the
+     doubly-abstracted state.  This is the second refinement step, which
+     the previous version claimed in its header but never established --
+     uniqueLeader_AbstractView unfolded back to uniqueLeader. *)
+  goal invHoldsAtTopLevel :
+    forall w : world.
+      reachableC w -> LeaderElectDynamicFull.inv (fullrefn w)
+
+  (* One-step progress with content: the conclusion is not just that the
+     step exists, but that the process it elects really is max-alive,
+     which needs the detector invariant. *)
+  goal suspectingAllHigherCanBecomeLeader :
     forall w : world, h : node.
-      crash_enbld w h -> not (crash w h).leader[h]
+      reachableC w -> valid h -> w.alive[h] ->
+      w.st[h] = Electing -> not w.leader[h] ->
+      (forall d : node. valid d -> id h < id d -> w.suspectedDead[h][d]) ->
+      exists w' : world. step w w' /\ w'.leader[h] /\ is_max_alive w' h
 
-  (* se h é líder num estado válido, então nenhum outro processo diferente de h é líder *)
-  lemma leader_unique_against_h :
-    forall w : world, h n : node.
-      inv w ->
-      valid h ->
-      valid n ->
-      w.leader[h] ->
-      n <> h ->
-      not w.leader[n]
-
-   (* se h era líder num estado válido, então depois de crash nenhum processo fica líder *)
-  let lemma crash_removes_all_leaders (w:world) (h n:node)
-    requires { inv w }
-    requires { crash_enbld w h }
-    requires { w.leader[h] }
-    requires { valid n }
-    ensures  { not (crash w h).leader[n] }
-  =
-    if n = h then
-      assert { (crash w h).leader[n] = false }
-    else begin
-      assert { not w.leader[n] };
-      assert { (crash w h).leader[n] = w.leader[n] }
-    end
-
-  (* se o líder h falha, então depois do crash não há líder *)
-  let lemma leaderCrashRemovesLeader (w:world) (h:node)
-    requires { inv w }
-    requires { crash_enbld w h }
-    requires { w.leader[h] }
-    ensures  { no_leader (crash w h) }
-  =
-    assert { forall n : node.
-      valid n -> not (crash w h).leader[n] }
-
-  goal timeoutCreatesSuspicion :
-    forall w : world, h : node.
-      timeout_suspect_enbld w h -> (timeout_suspect w h).suspect[h]
-
-  goal suspectedAliveProcessCanStartElection :
-    forall w : world, h : node.
-      valid h -> w.alive[h] -> w.suspect[h] ->
-      (w.st[h] = Idle \/ w.st[h] = Normal \/ w.st[h] = Waiting) ->
-      start_election_enbld w h
-
-  goal onlyCurrentMaxCanBecomeLeader :
-    forall w : world, h : node.
-      become_leader_enbld w h -> is_max_alive w h
-
-  goal maxAliveCanBecomeLeaderWhenElectingAndNoLeader :
-    forall w : world, h : node.
-      is_max_alive w h -> no_leader w -> w.st[h] = Electing ->
-      become_leader_enbld w h
-
-  goal becomeLeaderCreatesLeader :
-    forall w : world, h : node.
-      become_leader_enbld w h -> (become_leader w h).leader[h]
-
-  goal maxAliveElectingHasLeaderSuccessor :
-    forall w : world, h : node.
-      is_max_alive w h -> no_leader w -> w.st[h] = Electing ->
-      exists w' : world. step w w' /\ w'.leader[h]
-
-  goal noLeaderAndAliveCanSuspect :
-    forall w : world, h : node.
-      no_leader w -> valid h -> w.alive[h] -> not w.leader[h] ->
-      timeout_suspect_enbld w h
-
-  goal noLeaderAliveCanReachElectionStartLocally :
-    forall w : world, h : node.
-      no_leader w -> valid h -> w.alive[h] ->
-      (start_election_enbld (timeout_suspect w h) h \/
-       (timeout_suspect w h).suspect[h])
-
-  goal leaderCanSendHeartbeat :
-    forall w : world, h d : node.
-      valid h -> valid d -> h <> d ->
-      w.alive[h] -> w.alive[d] -> w.leader[h] ->
-      send_heartbeat_enbld w h d
-
-  goal leaderCanSendCoordinator :
-    forall w : world, h d : node.
-      valid h -> valid d -> w.alive[h] -> w.alive[d] ->
-      w.leader[h] -> id d < id h ->
-      send_coord_enbld w h d
+  (* Non-vacuity witness: with two nodes, node 1 (the highest ID) can
+     reach a state where it is leader.  The suspicion guard on
+     become_leader is vacuous for the highest-ID node, so no
+     detect_crash step is needed. *)
+  goal nonVacuous :
+    LeaderElectDynamicFull.n_nodes = 2 ->
+    (forall k : node. valid k -> id k <= id 1) ->
+    let w0 = { st = (fun n -> Idle); alive = (fun n -> true);
+               leader = (fun n -> false); inbox = (fun n -> Nil);
+               suspectNoLeader = (fun n -> false);
+               suspectedDead = (fun n -> (fun d -> false)) } in
+    let w1 = want_election w0 1 in
+    let w2 = start_election w1 1 in
+    let w3 = become_leader w2 1 in
+    (initWorld w0
+      by (forall n. valid n -> w0.st[n] = Idle)
+      /\ (forall n. valid n -> w0.alive[n] = true)
+      /\ (forall n. valid n -> w0.leader[n] = false)
+      /\ (forall n. valid n -> w0.suspectNoLeader[n] = false)
+      /\ (forall n d. valid n -> valid d -> w0.suspectedDead[n][d] = false)
+      /\ (forall n. valid n -> w0.inbox[n] = Nil))
+    /\ (step w0 w1
+      by want_election_enbld w0 1
+      by valid 1 /\ w0.alive[1] /\ not w0.leader[1])
+    /\ (step w1 w2
+      by start_election_enbld w1 1
+      by valid 1 /\ w1.alive[1] /\ w1.suspectNoLeader[1] /\ w1.st[1] = Idle)
+    /\ (step w2 w3
+      by become_leader_enbld w2 1
+      by valid 1 /\ w2.alive[1] /\ w2.st[1] = Electing /\ not w2.leader[1]
+      /\ (forall d. valid d -> id 1 < id d -> w2.suspectedDead[1][d]))
+    /\ w3.leader[1]
+    /\ (is_max_alive w3 1
+      by valid 1 /\ w3.alive[1]
+      /\ (forall k. valid k -> w3.alive[k] -> id k <= id 1
+        by id k <= id 1))
 
 end

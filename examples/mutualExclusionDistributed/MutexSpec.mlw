@@ -71,4 +71,12 @@ module MutexSpec
    *)
   goal oneCS : forall w :world. reachable w -> inv w
 
+  (* Non-vacuity witness: with a single process, process 0 can enter the
+     CS from the initial state. *)
+  goal nonVacuous :
+    n_processes = 1 ->
+    let w0 = { inCS = fun p -> false } in
+    let w1 = enter w0 0 in
+    initWorld w0 /\ step w0 w1 /\ w1.inCS[0] = true
+
 end
