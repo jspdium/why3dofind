@@ -76,7 +76,7 @@ module LeaderElectMaxAlive
   = initWorld_p w
 
   (* Abstract action: the maximum alive node becomes leader. *)
-  predicate act_enbld (w:world) (h:node) =
+  predicate act_enbld (_:world) (h:node) =
     valid h /\ alive h /\ h = maxAlive_global
 
   let ghost function act (w:world) (h:node) : world

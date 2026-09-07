@@ -48,7 +48,9 @@ module RaftTerms
         inQuorum k1 -> inQuorum k2 -> 
         exists x : node. validNode x /\ mem x k1 /\ mem x k2
 
-    axiom nodeRepresentable : forall m: msg. validNode m.msrc
+    predicate wellFormedMsg (m: msg)
+
+    axiom nodeRepresentable : forall m: msg. wellFormedMsg m /\ validNode m.msrc
 
 
     (* ------------------------------------------------------------------ *)

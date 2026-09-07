@@ -635,10 +635,10 @@ module BullyDynamicFull
   goal nonVacuous :
     LeaderElectDynamicFull.n_nodes = 2 ->
     (forall k : node. valid k -> id k <= id 1) ->
-    let w0 = { st = (fun n -> Idle); alive = (fun n -> true);
-               leader = (fun n -> false); inbox = (fun n -> Nil);
-               suspectNoLeader = (fun n -> false);
-               suspectedDead = (fun n -> (fun d -> false)) } in
+    let w0 = { st = (fun _ -> Idle); alive = (fun _ -> true);
+               leader = (fun _ -> false); inbox = (fun _ -> Nil);
+               suspectNoLeader = (fun _ -> false);
+               suspectedDead = (fun _ -> (fun _ -> false)) } in
     let w1 = want_election w0 1 in
     let w2 = start_election w1 1 in
     let w3 = become_leader w2 1 in
