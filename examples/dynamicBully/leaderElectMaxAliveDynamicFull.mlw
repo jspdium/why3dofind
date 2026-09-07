@@ -155,6 +155,4 @@ module LeaderElectMaxAliveDynamicFull
     forall w : world, h : node.
       is_max_alive_C w h -> no_leader_C w -> elect_max_enbld w h
 
-  goal xxx : false
-
 end
