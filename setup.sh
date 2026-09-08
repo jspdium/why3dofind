@@ -66,6 +66,9 @@ install_pkg raft_msg                        examples/raft/raft_msg.mlw
 install_pkg raft_shm                        examples/raft/raft_shm.mlw
 install_pkg raft_refi                       examples/raft/raft_refi.mlw
 
+# controlledFlooding (student project: Gonçalo Caixeiro)
+install_pkg controlledFlooding              examples/controlledFlooding/controlledFlooding.mlw
+
 # wip/ricartAgrawala (student project: Cláudia Pinto, Patrícia Carvalho)
 # (moved to examples/mutualExclusionDistributed)
 
