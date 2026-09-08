@@ -4,6 +4,8 @@
    Contribution by:
      Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
 
+   Adapted to the why3do refinement framework.
+
    Based on:
      • raft.tla (Ongaro 2014)  –  structure of state & actions
      • why3do/paxos/voting.mlw –  proof style (ghost votes map,

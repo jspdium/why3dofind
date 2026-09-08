@@ -3,6 +3,8 @@
 
    Contribution by:
      Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
+
+   Adapted to the why3do refinement framework.
    ============================================================ *)
 
 module RaftTerms

@@ -1,48 +1,67 @@
 (* ============================================================
    Controlled flooding.
 
-   A message originating at a single source node is propagated along
-   network edges.  A node that holds the message may pass it to a
-   neighbour that does not yet hold it; a node is never told twice.
+   Contribution by: Gonçalo Caixeiro
 
-   State     received  the set of nodes that hold the message
-             content   what each node holds
+   A message originating at a single source node is propagated across a
+   network.  A node holding the message may pass it to a neighbour that
+   does not yet hold it; a node is never told twice.  This is the
+   "controlled" part: the guard is the recipient's own record of whether
+   it already has the message, so the flood cannot circulate for ever.
 
-   Action    flood u v  u passes the message to a neighbour v that does
-                        not yet hold it
+   Topology   node = int, valid below n_nodes; an uninterpreted edge
+              relation, assumed only to relate valid nodes; a source node
+              and a message value source_msg
 
-   Invariant the source holds the message; every node that holds the
-             message is a valid node and holds exactly the source's
-             message; and at most n_nodes nodes hold it.
+   State      received  the set of nodes holding the message
+              content   what each node holds
 
-   Beyond the invariant, three properties are established over reachable
-   states: the set of informed nodes never shrinks, an informed node's
-   content never changes, and every step strictly decreases
-   n_nodes - cardinal received, so flooding terminates within n_nodes
-   steps.  Completeness says that in a quiescent state every node with a
-   path from the source holds the message; with a connected topology that
-   is every valid node.
+   Action     flood u v  u passes the message to a neighbour v that does
+                         not yet hold it
+
+   Invariant  the source holds the message; every node holding the
+              message is valid and holds exactly source_msg
+
+   Results over reachable states
+     - safety: an informed node holds source_msg, and the source is
+       always informed
+     - cardinal received <= n_nodes (cardinal_bounded, from member
+       validity via bound_cardinal, rather than an invariant conjunct)
+     - monotonicity: the set of informed nodes never shrinks, and an
+       informed node's content never changes
+     - termination: every step strictly decreases n_nodes - cardinal
+       received, which stays non-negative, so flooding stops after at
+       most n_nodes steps
+     - completeness: in a quiescent state every node with a path from
+       the source is informed; with a connected topology that is every
+       valid node
+
+   Assumptions.  Four axioms, all well-formedness conditions on an
+   otherwise uninterpreted topology: n_nodes > 0, source is valid, and
+   edges relate valid nodes.  Path length is carried by the inductive
+   relation path_len rather than by an axiomatised distance function, so
+   completeness is proved by induction on the derivation.
 
    Limitations
-     - The topology is an uninterpreted `edge` relation, assumed only to
-       relate valid nodes.  Nothing requires it to be symmetric, so
-       "connected" here means every node is reachable from the source by
-       directed edges, not mutual reachability.
-     - Transmission is atomic and reliable: passing the message is a
-       single step with no channel, no loss, no duplication and no delay,
-       and a node cannot fail.  There is therefore no distinction between
-       sending and receiving, and no notion of a message in flight.
-     - The "controlled" part of controlled flooding is modelled by the
-       guard `not mem v received`, i.e. by a node's own record of whether
-       it already holds the message.  Sequence numbers, hop counts and
-       time-to-live are not modelled, and neither is a second flood of a
-       different message: `content` can only ever hold source_msg.
-     - Completeness is conditional on quiescence.  flood_terminates shows
-       the process cannot run for ever, but no run is constructed, so the
+     - Transmission is atomic and reliable.  Passing the message is one
+       step: no channel, no message in flight, no loss, duplication,
+       reordering or delay, and no distinction between sending and
+       receiving.  Nodes do not fail.
+     - The edge relation is not assumed symmetric, so "connected" means
+       every node is reachable from the source along directed edges, not
+       mutual reachability.  Nothing rules out an empty topology, in
+       which case coverage holds for the source alone.
+     - Only one flood is modelled.  content can only ever hold
+       source_msg, so nothing distinguishes a stale message from a fresh
+       one; sequence numbers, hop counts and time-to-live are absent, and
+       a second flood of a different message is out of scope.
+     - Completeness is conditional on quiescence.  Termination shows the
+       process cannot run for ever, but no run is constructed, so the
        existence of a reachable quiescent state is not itself proved.
-     - Progress is otherwise out of scope: nothing bounds how long a node
-       waits, and there is no fairness assumption.
+     - No fairness or timing.  Nothing bounds how long a node waits
+       before forwarding, and no liveness property is stated.
    ============================================================ *)
+
 
 module ControlledFlooding
 

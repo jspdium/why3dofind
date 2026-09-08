@@ -4,6 +4,8 @@
    Original model by:
      Cláudia Pinto, Patrícia Carvalho
 
+   Adapted to the why3do refinement framework.
+
    Refines MutexSpec, the abstract mutual-exclusion machine, which records
    only critical-section occupancy.
 

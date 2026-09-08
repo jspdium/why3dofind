@@ -3,6 +3,8 @@
    Contribution by:
      João Gonçalves, Carlos Pina
 
+   Adapted to the why3do refinement framework.
+
    Refines LeaderElectDynamicFull.  Same state shape, plus static
    injective process IDs, and election restricted to the alive process of
    greatest ID.

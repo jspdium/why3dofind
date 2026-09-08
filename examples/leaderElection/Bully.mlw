@@ -3,6 +3,8 @@
    Contribution by:
      João Gonçalves, Carlos Pina
 
+   Adapted to the why3do refinement framework.
+
    This model focuses on safety properties:
      1. every leader is alive;
      2. every leader is the alive process with maximum id;

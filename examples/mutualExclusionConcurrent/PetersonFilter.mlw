@@ -4,6 +4,8 @@
    Contribution by:
      Miguel Carvalho, Margarida Pires
 
+   Adapted to the why3do refinement framework.
+
    Refinement mapping:
      Idle   -> Init
      Trying -> Init

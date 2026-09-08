@@ -3,6 +3,8 @@
    Contribution by:
      João Gonçalves, Carlos Pina
 
+   Adapted to the why3do refinement framework.
+
    The most abstract machine of the dynamic leader-election chain.  It
    records only which processes are alive and which process is leader --
    no process IDs, no messages, no timing.

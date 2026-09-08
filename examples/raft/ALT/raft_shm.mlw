@@ -4,6 +4,8 @@
    Contribution by:
      Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
 
+   Adapted to the why3do refinement framework.
+
    Election only: no logs, no log replication, no commit index.
    Soliciting a vote and granting it are one atomic action, so there is
    no message layer; raft_msg models the queues.

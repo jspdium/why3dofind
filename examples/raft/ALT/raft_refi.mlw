@@ -5,6 +5,8 @@
    Contribution by:
      Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
 
+   Adapted to the why3do refinement framework.
+
    Two machines.  AbstractElection records, per term, which node was
    elected; an abstract step may fill an empty term or re-affirm the node
    already there, never overwrite a different one.  Raft adds terms,
