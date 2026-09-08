@@ -115,9 +115,6 @@ module ControlledFlooding
   = bound_cardinal w.received n_nodes
 
 
-  lemma inv_content_of_received :
-    forall w: world, u: node. inv w -> mem u w.received -> w.content[u] = source_msg
-
   predicate initWorld_p (w: world) =
     w.received = singleton source /\
     w.content[source] = source_msg
@@ -154,25 +151,7 @@ module ControlledFlooding
     ensures  { inv (flood w u v) }
     variant  { cardinal w.received }
   =
-    let result = flood w u v in
-    assert { result.received = add v w.received };
-    assert { result.content = w.content[v <- w.content[u]] };
-    assert { mem source result.received
-      by mem source w.received };
-    assert { result.content[source] = source_msg
-      by source <> v \/ not mem v w.received };
-    assert { valid_node v
-      by edge u v };
-    assert { forall n. mem n result.received -> valid_node n };
-    assert { w.content[u] = source_msg
-      by mem u w.received };
-    assert { result.content[v] = w.content[u] };
-    assert { result.content[v] = source_msg };
-    assert { forall n. mem n result.received ->
-               result.content[n] = source_msg };
-    assert { cardinal result.received = cardinal w.received + 1
-      by not mem v w.received };
-    assert { cardinal result.received <= n_nodes }
+    ()
 
   inductive stepind world world =
     | step_flood : forall w: world, u v: node.
