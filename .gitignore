@@ -10,3 +10,6 @@ why3shapes.gz
 
 # backup files
 *.bak
+
+# generated HTML proof reports
+html/

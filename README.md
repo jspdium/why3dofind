@@ -11,7 +11,9 @@ stateMachineModels/       Base library (inductive invariants, refinement)
 examples/counter/         Concurrent counter using a lock, by refinement
 examples/twoPhase/        Two-phase handshake protocol, by refinement
 examples/mutualExclusionConcurrent/
-                          Mutual exclusion algorithms (Peterson, Bakery, filter, etc.)
+                          Concurrent mutual exclusion (Peterson, Bakery, filter, etc.)
+examples/mutualExclusionDistributed/
+                          Distributed mutual exclusion (Lamport, Ricart-Agrawala)
 examples/mutualExclusionToken/
                           Dijkstra self-stabilizing ring and bidirectional array
 examples/leaderElection/  Chang-Roberts leader election + Bully, by refinement
@@ -22,15 +24,18 @@ examples/paxosNoRefinement/
 examples/paxos/            Paxos consensus, two-step refinement
 examples/raft/             Raft leader election (message-passing, shared-memory, refinement)
 examples/dynamicBully/    Dynamic Bully leader election with crash/recovery, by refinement
+examples/controlledFlooding/
+                          Controlled flooding broadcast, by refinement
 wip/                      Work-in-progress examples (not part of the library)
-└── petersonN/            N-process Peterson filter algorithm (monolithic + refinement)
 ```
 
 Cross-file dependencies in why3find are resolved through installed
 packages, not folder loadpaths. Files that are depended upon by other
 files (`inductiveness.mlw`, `refinement.mlw`, `counter.mlw`,
 `counter_alt.mlw`, `alternate.mlw`, `mutexAbstractN.mlw`,
-`mutexAbstract.mlw`, `Peterson.mlw`) are registered as why3find packages.
+`mutexAbstract.mlw`, `Peterson.mlw`, `MutexSpec.mlw`, `PetersonFilter.mlw`,
+`controlledFlooding.mlw`) are registered as why3find packages.
+See `why3find.json` for the full package list.
 
 ## Setup
 
