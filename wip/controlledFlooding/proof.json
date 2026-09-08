@@ -1,0 +1,64 @@
+{
+  "profile": [],
+  "proofs": {
+    "ControlledFlooding": {
+      "bound_cardinal": { "prover": "cvc5@1.0.3", "time": 0.05 },
+      "cardinal_bounded": { "prover": "cvc5@1.0.3", "time": 0.028 },
+      "completeness": { "prover": "cvc5@1.0.3", "time": 0.026 },
+      "content_stable_TR": { "prover": "cvc5@1.0.3", "time": 0.031 },
+      "flood": { "prover": "cvc5@1.0.3", "time": 0.023 },
+      "flood_preserves_inv": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.009 },
+          { "prover": "cvc5@1.0.3", "time": 0.026 },
+          { "prover": "cvc5@1.0.3", "time": 0.032 },
+          { "prover": "cvc5@1.0.3", "time": 0.032 },
+          { "prover": "cvc5@1.0.3", "time": 0.015 },
+          { "prover": "cvc5@1.0.3", "time": 0.029 },
+          { "prover": "cvc5@1.0.3", "time": 0.036 },
+          { "prover": "cvc5@1.0.3", "time": 0.042 },
+          { "prover": "cvc5@1.0.3", "time": 0.018 },
+          { "prover": "cvc5@1.0.3", "time": 0.018 },
+          { "prover": "cvc5@1.0.3", "time": 0.033 },
+          { "prover": "cvc5@1.0.3", "time": 0.015 },
+          { "prover": "eprover@2.6", "time": 0.057 },
+          { "prover": "cvc5@1.0.3", "time": 0.032 }
+        ]
+      },
+      "flood_reaches": {
+        "tactic": "induction_pr",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.014 },
+          { "prover": "alt-ergo@2.4.2", "time": 0.009 }
+        ]
+      },
+      "flood_terminates": { "prover": "cvc5@1.0.3", "time": 0.039 },
+      "full_coverage": { "prover": "cvc5@1.0.3", "time": 0.043 },
+      "informedNodesAreValid": { "prover": "cvc5@1.0.3", "time": 0.031 },
+      "informedNodesHoldSourceMsg": { "prover": "cvc5@1.0.3", "time": 0.036 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.029 },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "inv_content_of_received": { "prover": "cvc5@1.0.3", "time": 0.025 },
+      "inv_step_TR": { "prover": "cvc5@1.0.3", "time": 0.014 },
+      "path_len_nonneg": {
+        "tactic": "induction_pr",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.012 },
+          { "prover": "cvc5@1.0.3", "time": 0.016 }
+        ]
+      },
+      "received_monotone_TR": {
+        "tactic": "induction_pr",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.012 },
+          { "prover": "cvc5@1.0.3", "time": 0.061 }
+        ]
+      },
+      "sourceAlwaysInformed": { "prover": "cvc5@1.0.3", "time": 0.033 },
+      "sourceCanFlood": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "step": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "step'refn": { "prover": "cvc5@1.0.3", "time": 0.013 }
+    }
+  }
+}

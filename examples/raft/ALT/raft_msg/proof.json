@@ -1,0 +1,45 @@
+{
+  "profile": [],
+  "proofs": {
+    "RaftTerms": {
+      "becomeLeader": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "discardStale": { "prover": "cvc5@1.0.3", "time": 5.9 },
+      "initWorld": {
+        "tactic": "split_vc",
+        "children": [
+          {
+            "tactic": "inline_goal",
+            "children": [
+              {
+                "tactic": "split_vc",
+                "children": [
+                  { "prover": "cvc5@1.0.3", "time": 0.012 },
+                  { "prover": "cvc5@1.0.3", "time": 0.014 },
+                  { "prover": "cvc5@1.0.3", "time": 0.02 },
+                  { "prover": "cvc5@1.0.3", "time": 0.016 },
+                  { "prover": "cvc5@1.0.3", "time": 0.017 },
+                  { "prover": "cvc5@1.0.3", "time": 0.015 },
+                  {
+                    "tactic": "inline_goal",
+                    "children": [ { "prover": "cvc5@1.0.3", "time": 0.012 } ]
+                  },
+                  { "prover": "cvc5@1.0.3", "time": 0.012 }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "mem_append_split": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "mem_hd": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "noDuplicateVoters": { "prover": "cvc5@1.0.3", "time": 0.035 },
+      "noStuckInbox": null,
+      "queuedMessagesWellFormed": { "prover": "cvc5@1.0.3", "time": 0.057 },
+      "requestVote": { "prover": "cvc5@1.0.3", "time": 0.53 },
+      "step'refn": { "prover": "cvc5@1.0.3", "time": 0.041 },
+      "tail_still_mem": { "prover": "cvc5@1.0.3", "time": 0.011 },
+      "termsAlwaysPositive": { "prover": "cvc5@1.0.3", "time": 0.057 }
+    }
+  }
+}

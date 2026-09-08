@@ -50,8 +50,8 @@ module RaftTerms
 
     predicate wellFormedMsg (m: msg)
 
-    axiom nodeRepresentable : forall m: msg. wellFormedMsg m /\ validNode m.msrc
-
+    (* axiom nodeRepresentable : forall m: msg. wellFormedMsg m /\ validNode m.msrc
+     *)
 
     (* ------------------------------------------------------------------ *)
     (* Inductive Invariants                                               *)

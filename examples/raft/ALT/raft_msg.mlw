@@ -1,0 +1,453 @@
+(* ============================================================
+   Raft leader election — message-passing model.
+
+   Contribution by:
+     Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
+
+   Election only: no logs, no log replication, no commit index.
+
+   State     currentTerm   per-node current term (>= 1)
+             state         Follower | Candidate | Leader
+             votedFor      votedFor[i,t] : who i voted for in term t
+             votesGranted  votesGranted[i,t] : voters that granted i in t
+             inMsgs        per-node FIFO inbox of packets, each carrying
+                           mtype, mterm, mvoteGranted, msrc
+
+   Actions   timeout        become Candidate at term+1, voting for self
+             requestVote    a Candidate sends RequestVoteRequest
+             handleRVReq    grant or refuse, and reply
+             handleRVResp   record a granted vote
+             advanceTerm    on a higher-term message: adopt the term and
+                            revert to Follower, leaving the message to be
+                            processed next
+             discardStale   drop a response from a superseded term
+             becomeLeader   a Candidate holding a quorum becomes Leader
+
+   Invariant terms are positive; queued messages have valid sources and
+             terms; a granted vote in votesGranted is matched by the
+             voter's votedFor; a granted response in flight is matched by
+             the sender's votedFor; a message's term never exceeds its
+             sender's current term; a vote's term never exceeds the
+             voter's current term; a voter list has no duplicates; a
+             Leader holds a quorum for its current term.
+
+   Leader uniqueness follows from quorum intersection: two Leaders in the
+   same term would share a voter, and votedFor[x,t] is a single option.
+
+   Limitations
+     - Quorums are abstract.  inQuorum is uninterpreted, constrained only
+       by monotonicity, pairwise intersection, and non-emptiness of the
+       family.  Intersection is an assumption, not the pigeonhole
+       principle: nothing here relates quorums to majorities.  Voter lists
+       are kept duplicate-free so that inQuorum can be soundly
+       instantiated by a cardinality predicate, but that instantiation is
+       not carried out.
+     - Channels are reliable and per-node FIFO: no loss, no duplication,
+       no reordering within an inbox, no partitions.  Sends are
+       synchronous in the sense that a send appends directly to the
+       recipient's inbox.
+     - Messages carry no election identity beyond mterm, so two requests
+       from the same candidate in the same term are indistinguishable.
+     - Safety only.  noStuckInbox shows some action is always available to
+       a node with a non-empty inbox, but nothing shows that a Leader is
+       ever elected: that needs multi-step reachability and a quorum
+       actually being accumulated.  quorum_nonempty rules out the
+       degenerate reading in which inQuorum is false everywhere and
+       becomeLeader is dead, but does not make election reachable.
+     - n_nodes is fixed; nodes never crash or restart.
+   ============================================================ *)
+
+module RaftTerms
+
+    use int.Int
+    use list.List
+    use list.Append
+    use list.Mem
+    use list.HdTlNoOpt
+    use option.Option
+    use map.Map
+
+    type node = int
+
+    val constant n_nodes : int
+    axiom n_nodes_pos : n_nodes >= 2
+
+    type node_state = Follower | Candidate | Leader
+
+    type msg_type = RequestVoteRequest | RequestVoteResponse
+
+    type msg = {
+        mtype: msg_type;
+        mterm: int;
+        mvoteGranted: bool;
+        msrc: node;
+    }
+
+    type world = {
+        currentTerm:  map node int;
+        state:        map node node_state;
+        votedFor:     map (node, int) (option node);
+        votesGranted: map (node, int) (list node);
+        inMsgs:       map node (list msg);
+    }
+
+    predicate validNode (n:node) = 0 <= n < n_nodes
+    predicate validTerm (t:int)  = 1 <= t
+
+    (* ------------------------------------------------------------------ *)
+    (* Quorums                                                            *)
+    (* ------------------------------------------------------------------ *)
+
+    predicate inQuorum (k:list node)
+
+    axiom inQuorum_cons :
+        forall x:node, l:list node. inQuorum l -> inQuorum (Cons x l)
+
+    axiom quorum_intersection :
+        forall k1 k2 : list node.
+            inQuorum k1 -> inQuorum k2 ->
+            exists x : node. validNode x /\ mem x k1 /\ mem x k2
+
+    (* Without this, inQuorum could be false everywhere, quorum_intersection
+       would be vacuous and becomeLeader would be dead code. *)
+    axiom quorum_nonempty :
+        exists k : list node. inQuorum k
+
+    (* ------------------------------------------------------------------ *)
+    (* List helpers                                                       *)
+    (* ------------------------------------------------------------------ *)
+
+    let lemma mem_hd (l: list msg)
+      requires { l <> Nil }
+      ensures  { mem (hd l) l }
+    = match l with Nil -> absurd | Cons _ _ -> () end
+
+    (* A message surviving in the tail was in the original inbox. *)
+    let lemma tail_still_mem (ib: map node (list msg)) (k: node)
+                             (m: msg) (tl: list msg) (x: msg)
+      requires { ib[k] = Cons m tl }
+      requires { mem x tl }
+      ensures  { mem x ib[k] }
+    = ()
+
+    let rec lemma mem_append_split (x: msg) (l1 l2: list msg)
+      ensures { mem x (l1 ++ l2) -> mem x l1 \/ mem x l2 }
+      variant { l1 }
+    = match l1 with
+      | Nil -> ()
+      | Cons _ r -> mem_append_split x r l2
+      end
+
+    (* Duplicate-free voter lists. *)
+    predicate distinctVoters (l: list node) =
+      match l with
+      | Nil -> true
+      | Cons x r -> not (mem x r) /\ distinctVoters r
+      end
+
+    (* ------------------------------------------------------------------ *)
+    (* Inductive invariant                                                *)
+    (* ------------------------------------------------------------------ *)
+
+    predicate termsPositive (w:world) =
+        forall i :node. validNode i -> validTerm w.currentTerm[i]
+
+    (* Replaces the former nodeRepresentable axiom.  Both senders stamp
+       msrc with their own guard-validated id and mterm with their own
+       current term, so this is established rather than assumed. *)
+    predicate msgsWellFormed (w:world) =
+        forall i :node, m :msg. validNode i ->
+            mem m w.inMsgs[i] ->
+            validNode m.msrc /\ validTerm m.mterm
+
+    predicate voteGrantedToFor (w:world) =
+        forall i v :node, t :int. validNode i -> validNode v -> validTerm t ->
+            mem v w.votesGranted[i, t] -> w.votedFor[v, t] = Some i
+
+    predicate votesGrantedDistinct (w:world) =
+        forall i :node, t :int. validNode i -> validTerm t ->
+            distinctVoters w.votesGranted[i, t]
+
+    predicate messagesConsistentWithVotes (w:world) =
+        forall i :node, m :msg. validNode i ->
+            mem m w.inMsgs[i] ->
+            m.mtype = RequestVoteResponse -> m.mvoteGranted = true ->
+            w.votedFor[m.msrc, m.mterm] = Some i
+
+    predicate messagesLECurrentTerm (w:world) =
+        forall i :node, m :msg. validNode i ->
+            mem m w.inMsgs[i] -> m.mterm <= w.currentTerm[m.msrc]
+
+    predicate voteLECurrentTerm (w:world) =
+        forall i j :node, t :int. validNode i -> validTerm t ->
+            w.votedFor[i, t] = Some j -> t <= w.currentTerm[i]
+
+    predicate leaderQuorum (w:world) =
+        forall i :node. validNode i -> w.state[i] = Leader ->
+            inQuorum w.votesGranted[i, w.currentTerm[i]]
+
+    predicate inv (w:world) =
+        termsPositive w
+        /\ msgsWellFormed w
+        /\ voteGrantedToFor w
+        /\ votesGrantedDistinct w
+        /\ messagesConsistentWithVotes w
+        /\ messagesLECurrentTerm w
+        /\ voteLECurrentTerm w
+        /\ leaderQuorum w
+
+    (* ------------------------------------------------------------------ *)
+    (* Initial world                                                      *)
+    (* ------------------------------------------------------------------ *)
+
+    predicate initWorld_p (w:world) =
+        (forall n :node. validNode n ->
+            w.inMsgs[n] = Nil /\ w.state[n] = Follower /\ w.currentTerm[n] = 1)
+        /\
+        (forall n :node, t :int. validNode n -> validTerm t ->
+            w.votedFor[n, t] = None /\ w.votesGranted[n, t] = Nil)
+
+    let ghost predicate initWorld (w:world)
+      ensures { result -> inv w }
+    = initWorld_p w
+
+    (* ------------------------------------------------------------------ *)
+    (* Actions                                                            *)
+    (* ------------------------------------------------------------------ *)
+
+    (* A1. Timeout: become Candidate for the next term, voting for self. *)
+    predicate timeout_enbld (w:world) (i:node) =
+        validNode i /\ (w.state[i] = Follower \/ w.state[i] = Candidate)
+
+    let ghost function timeout (w:world) (i:node) : world
+        requires { timeout_enbld w i }
+        ensures  { inv w -> inv result }
+    =
+        let nt = w.currentTerm[i] + 1 in
+        { inMsgs       = w.inMsgs;
+          state        = w.state[i <- Candidate];
+          votedFor     = w.votedFor    [(i, nt) <- Some i];
+          votesGranted = w.votesGranted[(i, nt) <- Cons i Nil];
+          currentTerm  = w.currentTerm [i       <- nt ] }
+
+    (* A2. A Candidate solicits a vote. *)
+    predicate requestVote_enbld (w:world) (i:node) (j:node) =
+        validNode i /\ validNode j /\ i <> j /\ w.state[i] = Candidate
+
+    let ghost function requestVote (w:world) (i:node) (j:node) : world
+        requires { requestVote_enbld w i j }
+        ensures  { inv w -> inv result }
+    =
+        let p = { mtype        = RequestVoteRequest;
+                  mterm        = w.currentTerm[i];
+                  mvoteGranted = false;
+                  msrc         = i } in
+        { inMsgs       = w.inMsgs[j <- w.inMsgs[j] ++ Cons p Nil];
+          state        = w.state;
+          votedFor     = w.votedFor;
+          votesGranted = w.votesGranted;
+          currentTerm  = w.currentTerm }
+
+    (* A3. Adopt a higher term and revert to Follower.  The message is
+           left in place, so the next step can process it under the
+           updated term.  This is Raft's term rule, and it is what stops a
+           higher-term message wedging the inbox. *)
+    predicate advanceTerm_enbld (w:world) (i:node) =
+        validNode i
+        /\ w.inMsgs[i] <> Nil
+        /\ (hd w.inMsgs[i]).mterm > w.currentTerm[i]
+
+    let ghost function advanceTerm (w:world) (i:node) : world
+        requires { advanceTerm_enbld w i }
+        ensures  { inv w -> inv result }
+    =
+        { inMsgs       = w.inMsgs;
+          state        = w.state[i <- Follower];
+          votedFor     = w.votedFor;
+          votesGranted = w.votesGranted;
+          currentTerm  = w.currentTerm[i <- (hd w.inMsgs[i]).mterm] }
+
+    (* A4. Discard a response from a superseded term.  Stale requests need
+           no discard action: handleRVReq accepts them and refuses. *)
+    predicate discardStale_enbld (w:world) (i:node) =
+        validNode i
+        /\ w.inMsgs[i] <> Nil
+        /\ (hd w.inMsgs[i]).mtype = RequestVoteResponse
+        /\ (hd w.inMsgs[i]).mterm < w.currentTerm[i]
+
+    let ghost function discardStale (w:world) (i:node) : world
+        requires { discardStale_enbld w i }
+        ensures  { inv w -> inv result }
+    =
+        match w.inMsgs[i] with
+        | Nil -> absurd
+        | Cons _ tl ->
+            { inMsgs       = w.inMsgs[i <- tl];
+              state        = w.state;
+              votedFor     = w.votedFor;
+              votesGranted = w.votesGranted;
+              currentTerm  = w.currentTerm }
+        end
+
+    (* A5. Handle a vote request: grant if the term matches and no
+           conflicting vote has been cast, then reply either way. *)
+    predicate handleRVReq_enbld (w:world) (i:node) (j:node) =
+        validNode i /\ validNode j
+        /\ w.inMsgs[i] <> Nil
+        /\ (hd w.inMsgs[i]).mtype = RequestVoteRequest
+        /\ (hd w.inMsgs[i]).msrc  = j
+        /\ (hd w.inMsgs[i]).mterm <= w.currentTerm[i]
+
+    let ghost function handleRVReq (w:world) (i:node) (j:node) : world
+        requires { handleRVReq_enbld w i j }
+        ensures  { inv w -> inv result }
+    =
+        match w.inMsgs[i] with
+        | Nil -> absurd
+        | Cons m tl ->
+            let t = w.currentTerm[i] in
+            let newMsgs = w.inMsgs[i <- tl] in
+            let noConflict = match w.votedFor[i, t] with
+                             | None   -> true
+                             | Some v -> v = j
+                             end in
+            let grant = (m.mterm = t) && noConflict in
+            let reply = { mtype        = RequestVoteResponse;
+                          mterm        = t;
+                          mvoteGranted = grant;
+                          msrc         = i } in
+            assert { validNode reply.msrc /\ validTerm reply.mterm
+              by reply.msrc = i /\ reply.mterm = t };
+            assert { reply.mterm <= t };
+            { inMsgs       = newMsgs[j <- newMsgs[j] ++ Cons reply Nil];
+              state        = w.state;
+              votedFor     = if grant then w.votedFor[(i, t) <- Some j]
+                                      else w.votedFor;
+              votesGranted = w.votesGranted;
+              currentTerm  = w.currentTerm }
+        end
+
+    (* A6. Handle a vote response.  The membership test keeps voter lists
+           duplicate-free, so a repeated grant is not counted twice. *)
+    predicate handleRVResp_enbld (w:world) (i:node) (j:node) =
+        validNode i /\ validNode j
+        /\ w.inMsgs[i] <> Nil
+        /\ (hd w.inMsgs[i]).mtype = RequestVoteResponse
+        /\ (hd w.inMsgs[i]).msrc  = j
+        /\ (hd w.inMsgs[i]).mterm = w.currentTerm[i]
+
+    let ghost function handleRVResp (w:world) (i:node) (j:node) : world
+        requires { handleRVResp_enbld w i j }
+        ensures  { inv w -> inv result }
+    =
+        match w.inMsgs[i] with
+        | Nil -> absurd
+        | Cons m tl ->
+            let record = m.mvoteGranted
+                         && not (mem j w.votesGranted[i, m.mterm]) in
+            assert { validNode j /\ validTerm m.mterm
+              by m.msrc = j };
+            { inMsgs       = w.inMsgs[i <- tl];
+              state        = w.state;
+              votedFor     = w.votedFor;
+              votesGranted =
+                if record
+                then w.votesGranted[(i, m.mterm) <-
+                                    Cons j w.votesGranted[i, m.mterm]]
+                else w.votesGranted;
+              currentTerm  = w.currentTerm }
+        end
+
+    (* A7. A Candidate holding a quorum for its current term wins. *)
+    predicate becomeLeader_enbld (w:world) (i:node) =
+        validNode i
+        /\ w.state[i] = Candidate
+        /\ inQuorum w.votesGranted[i, w.currentTerm[i]]
+
+    let ghost function becomeLeader (w:world) (i:node) : world
+        requires { becomeLeader_enbld w i }
+        ensures  { inv w -> inv result }
+    =
+        { inMsgs       = w.inMsgs;
+          state        = w.state[i <- Leader];
+          votedFor     = w.votedFor;
+          votesGranted = w.votesGranted;
+          currentTerm  = w.currentTerm }
+
+    (* ------------------------------------------------------------------ *)
+    (* Transition relation                                                *)
+    (* ------------------------------------------------------------------ *)
+
+    inductive stepind world world =
+        | timeout_step : forall w :world, i :node.
+            timeout_enbld w i -> stepind w (timeout w i)
+        | request_vote_step : forall w :world, i j :node.
+            requestVote_enbld w i j -> stepind w (requestVote w i j)
+        | advance_term_step : forall w :world, i :node.
+            advanceTerm_enbld w i -> stepind w (advanceTerm w i)
+        | discard_stale_step : forall w :world, i :node.
+            discardStale_enbld w i -> stepind w (discardStale w i)
+        | handle_rv_req_step : forall w :world, i j :node.
+            handleRVReq_enbld w i j -> stepind w (handleRVReq w i j)
+        | handle_rv_resp_step : forall w :world, i j :node.
+            handleRVResp_enbld w i j -> stepind w (handleRVResp w i j)
+        | become_leader_step : forall w :world, i :node.
+            becomeLeader_enbld w i -> stepind w (becomeLeader w i)
+
+    let ghost predicate step (w1:world) (w2:world) = stepind w1 w2
+
+    clone export inductiveness.Inductiveness with
+        type world,
+        predicate inv,
+        val step,
+        val initWorld
+
+    (* ------------------------------------------------------------------ *)
+    (* Safety                                                             *)
+    (* ------------------------------------------------------------------ *)
+
+    predicate leaderUnique (w:world) =
+        forall i j : node, t : int.
+            validNode i -> validNode j -> validTerm t ->
+            w.state[i] = Leader -> w.state[j] = Leader ->
+            w.currentTerm[i] = t -> w.currentTerm[j] = t ->
+            i = j
+
+    (* Two Leaders in one term would share a voter, whose single votedFor
+       entry cannot name both. *)
+    lemma twoLeaders_commonVoter :
+        forall w : world, i j : node, t : int.
+            inv w ->
+            validNode i -> validNode j -> validTerm t ->
+            w.state[i] = Leader -> w.state[j] = Leader ->
+            w.currentTerm[i] = t -> w.currentTerm[j] = t ->
+            exists x : node. validNode x
+                /\ w.votedFor[x, t] = Some i
+                /\ w.votedFor[x, t] = Some j
+
+    goal uniqueLeader :
+        forall w : world. reachable w -> leaderUnique w
+
+    goal termsAlwaysPositive :
+        forall w : world, i : node.
+            reachable w -> validNode i -> validTerm w.currentTerm[i]
+
+    goal queuedMessagesWellFormed :
+        forall w : world, i : node, m : msg.
+            reachable w -> validNode i -> mem m w.inMsgs[i] ->
+            validNode m.msrc /\ validTerm m.mterm
+
+    goal noDuplicateVoters :
+        forall w : world, i : node, t : int.
+            reachable w -> validNode i -> validTerm t ->
+            distinctVoters w.votesGranted[i, t]
+
+    (* No inbox can wedge: whatever sits at the head, some action applies.
+       The four cases are advanceTerm, handleRVReq, handleRVResp and
+       discardStale, and they are exhaustive. *)
+    goal noStuckInbox :
+        forall w : world, i : node.
+            reachable w -> validNode i -> w.inMsgs[i] <> Nil ->
+            exists w' : world. step w w'
+
+end

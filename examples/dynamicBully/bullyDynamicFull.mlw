@@ -665,4 +665,5 @@ module BullyDynamicFull
       /\ (forall k. valid k -> w3.alive[k] -> id k <= id 1
         by id k <= id 1))
 
+
 end

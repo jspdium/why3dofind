@@ -1,0 +1,292 @@
+(* ============================================================
+   Controlled flooding.
+
+   A message originating at a single source node is propagated along
+   network edges.  A node that holds the message may pass it to a
+   neighbour that does not yet hold it; a node is never told twice.
+
+   State     received  the set of nodes that hold the message
+             content   what each node holds
+
+   Action    flood u v  u passes the message to a neighbour v that does
+                        not yet hold it
+
+   Invariant the source holds the message; every node that holds the
+             message is a valid node and holds exactly the source's
+             message; and at most n_nodes nodes hold it.
+
+   Beyond the invariant, three properties are established over reachable
+   states: the set of informed nodes never shrinks, an informed node's
+   content never changes, and every step strictly decreases
+   n_nodes - cardinal received, so flooding terminates within n_nodes
+   steps.  Completeness says that in a quiescent state every node with a
+   path from the source holds the message; with a connected topology that
+   is every valid node.
+
+   Limitations
+     - The topology is an uninterpreted `edge` relation, assumed only to
+       relate valid nodes.  Nothing requires it to be symmetric, so
+       "connected" here means every node is reachable from the source by
+       directed edges, not mutual reachability.
+     - Transmission is atomic and reliable: passing the message is a
+       single step with no channel, no loss, no duplication and no delay,
+       and a node cannot fail.  There is therefore no distinction between
+       sending and receiving, and no notion of a message in flight.
+     - The "controlled" part of controlled flooding is modelled by the
+       guard `not mem v received`, i.e. by a node's own record of whether
+       it already holds the message.  Sequence numbers, hop counts and
+       time-to-live are not modelled, and neither is a second flood of a
+       different message: `content` can only ever hold source_msg.
+     - Completeness is conditional on quiescence.  flood_terminates shows
+       the process cannot run for ever, but no run is constructed, so the
+       existence of a reachable quiescent state is not itself proved.
+     - Progress is otherwise out of scope: nothing bounds how long a node
+       waits, and there is no fairness assumption.
+   ============================================================ *)
+
+module ControlledFlooding
+
+  use int.Int
+  use set.Fset
+  use map.Map
+
+  (* ---------------------------------------------------------------- *)
+  (* Network                                                          *)
+  (* ---------------------------------------------------------------- *)
+
+  type node = int
+
+  val constant n_nodes : int
+  axiom n_nodes_pos : n_nodes > 0
+
+  predicate valid_node (n: node) = 0 <= n < n_nodes
+
+  val predicate edge (u v: node)
+
+  axiom edge_src_valid : forall u v: node. edge u v -> valid_node u
+  axiom edge_dst_valid : forall u v: node. edge u v -> valid_node v
+
+  type msg
+
+  val constant source_msg : msg
+
+  val constant source : node
+  axiom source_valid : valid_node source
+
+  (* ---------------------------------------------------------------- *)
+  (* State                                                            *)
+  (* ---------------------------------------------------------------- *)
+
+  type world = {
+    received : fset node;
+    content  : map node msg;
+  }
+
+  (* ---------------------------------------------------------------- *)
+  (* A set of nodes drawn from 0 .. k-1 has at most k elements.        *)
+  (* Used to bound cardinal received, both initially and after a       *)
+  (* flood; available to the provers as an ordinary lemma.             *)
+  (* ---------------------------------------------------------------- *)
+
+  let rec ghost lemma bound_cardinal (s: fset node) (k: int)
+    requires { 0 <= k }
+    requires { forall n: node. mem n s -> 0 <= n < k }
+    variant  { k }
+    ensures  { cardinal s <= k }
+  = if k = 0 then begin
+      assert { forall n: node. not (mem n s) };
+      assert { s = empty }
+    end else
+      bound_cardinal (remove (k - 1) s) (k - 1)
+
+  (* ---------------------------------------------------------------- *)
+  (* Inductive invariant                                              *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate inv (w: world) =
+    mem source w.received /\
+    w.content[source] = source_msg /\
+    (forall n: node. mem n w.received -> valid_node n) /\
+    (forall n: node. mem n w.received -> w.content[n] = source_msg)
+
+  let lemma cardinal_bounded (w: world)
+    requires { inv w }
+    ensures  { cardinal w.received <= n_nodes }
+  = bound_cardinal w.received n_nodes
+
+
+  lemma inv_content_of_received :
+    forall w: world, u: node. inv w -> mem u w.received -> w.content[u] = source_msg
+
+  predicate initWorld_p (w: world) =
+    w.received = singleton source /\
+    w.content[source] = source_msg
+
+  let ghost predicate initWorld (w: world)
+    ensures { result -> inv w }
+  = initWorld_p w
+
+  (* ---------------------------------------------------------------- *)
+  (* The flooding step                                                *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate can_flood (w: world) (u v: node) =
+    mem u w.received /\ edge u v /\ not mem v w.received
+
+  (* flood is total on its guard: it does not require inv.  Keeping it
+     total is what lets the step relation be inverted, so that invariant
+     preservation and the cardinality increase are proved rather than
+     assumed. *)
+  let ghost function flood (w: world) (u v: node) : world
+    requires { can_flood w u v }
+    ensures  { result.received = add v w.received }
+    ensures  { cardinal result.received = cardinal w.received + 1 }
+    ensures  { result.content[v] = w.content[u] }
+    ensures  { forall n: node. mem n w.received ->
+                 result.content[n] = w.content[n] }
+  =
+    { received = add v w.received;
+      content  = w.content[v <- w.content[u]] }
+
+  let rec ghost lemma flood_preserves_inv (w: world) (u v: node)
+    requires { can_flood w u v }
+    requires { inv w }
+    ensures  { inv (flood w u v) }
+    variant  { cardinal w.received }
+  =
+    let result = flood w u v in
+    assert { result.received = add v w.received };
+    assert { result.content = w.content[v <- w.content[u]] };
+    assert { mem source result.received
+      by mem source w.received };
+    assert { result.content[source] = source_msg
+      by source <> v \/ not mem v w.received };
+    assert { valid_node v
+      by edge u v };
+    assert { forall n. mem n result.received -> valid_node n };
+    assert { w.content[u] = source_msg
+      by mem u w.received };
+    assert { result.content[v] = w.content[u] };
+    assert { result.content[v] = source_msg };
+    assert { forall n. mem n result.received ->
+               result.content[n] = source_msg };
+    assert { cardinal result.received = cardinal w.received + 1
+      by not mem v w.received };
+    assert { cardinal result.received <= n_nodes }
+
+  inductive stepind world world =
+    | step_flood : forall w: world, u v: node.
+        can_flood w u v -> stepind w (flood w u v)
+
+  let ghost predicate step (w1: world) (w2: world)
+    ensures { result -> inv w1 -> inv w2 }
+  = stepind w1 w2
+
+  clone export inductiveness.Inductiveness with
+    type world          = world,
+    predicate inv       = inv,
+    val initWorld       = initWorld,
+    val step            = step
+
+  (* ---------------------------------------------------------------- *)
+  (* Properties of the transitive closure                             *)
+  (*                                                                  *)
+  (* Each of these is proved by induction on the step_TR derivation    *)
+  (* (transformation induction_pr), with the single-step case coming   *)
+  (* from flood's postconditions.  No fuel measure and no auxiliary    *)
+  (* axioms are needed.                                               *)
+  (* ---------------------------------------------------------------- *)
+
+  lemma inv_step_TR :
+    forall wa wb: world. inv wa -> step_TR wa wb -> inv wb
+
+  lemma received_monotone_TR :
+    forall wa wb: world. step_TR wa wb ->
+      forall n: node. mem n wa.received -> mem n wb.received
+
+  lemma content_stable_TR :
+    forall wa wb: world. inv wa -> step_TR wa wb ->
+      forall n: node. mem n wa.received ->
+        wb.content[n] = wa.content[n]
+
+  (* ---------------------------------------------------------------- *)
+  (* Paths                                                            *)
+  (*                                                                  *)
+  (* path_len carries the length, so completeness can be proved by     *)
+  (* induction on the derivation.  This replaces an uninterpreted      *)
+  (* path_length function with five axioms and a choice function for   *)
+  (* path predecessors.                                                *)
+  (* ---------------------------------------------------------------- *)
+
+  inductive path_len node node int =
+    | pl_refl : forall n: node. path_len n n 0
+    | pl_step : forall u v z: node, k: int.
+        path_len u v k -> edge v z -> path_len u z (k + 1)
+
+  lemma path_len_nonneg :
+    forall u v: node, k: int. path_len u v k -> 0 <= k
+
+  predicate path (u v: node) =
+    exists k: int. path_len u v k
+
+  (* ---------------------------------------------------------------- *)
+  (* Quiescence and completeness                                      *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate quiescent (w: world) =
+    forall u v: node. not (can_flood w u v)
+
+  (* By induction on path_len: at a quiescent state, an informed node's
+     neighbours are all informed, since otherwise a flood would be
+     enabled. *)
+  lemma flood_reaches :
+    forall u v: node, k: int. path_len u v k ->
+      forall w: world.
+        inv w -> quiescent w -> mem u w.received ->
+        mem v w.received
+
+  predicate connected =
+    forall v: node. valid_node v -> path source v
+
+  (* ---------------------------------------------------------------- *)
+  (* Safety, termination and coverage                                 *)
+  (* ---------------------------------------------------------------- *)
+
+  goal informedNodesHoldSourceMsg :
+    forall w: world, n: node. reachable w ->
+      mem n w.received -> w.content[n] = source_msg
+
+  goal sourceAlwaysInformed :
+    forall w: world. reachable w -> mem source w.received
+
+  goal informedNodesAreValid :
+    forall w: world, n: node. reachable w ->
+      mem n w.received -> valid_node n
+
+  (* Every step strictly decreases n_nodes - cardinal received, which is
+     non-negative, so flooding stops after at most n_nodes steps. *)
+  goal flood_terminates :
+    forall w1 w2: world. reachable w1 -> step w1 w2 ->
+      0 <= n_nodes - cardinal w2.received
+      < n_nodes - cardinal w1.received
+
+  (* The initial state is not quiescent whenever the source has a
+     neighbour, so the quiescence hypothesis below is not reached
+     trivially. *)
+  goal sourceCanFlood :
+    forall w: world, v: node.
+      initWorld w -> edge source v -> v <> source ->
+      can_flood w source v
+
+  goal completeness :
+    forall w: world. reachable w -> quiescent w ->
+      forall v: node. path source v ->
+        mem v w.received /\ w.content[v] = source_msg
+
+  goal full_coverage :
+    connected ->
+    forall w: world. reachable w -> quiescent w ->
+      forall v: node. valid_node v ->
+        mem v w.received /\ w.content[v] = source_msg
+
+end

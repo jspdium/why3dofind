@@ -187,4 +187,5 @@ module LamportDistributedMutex
     forall w: world.
     reachableC w -> MutexSpec.inv (refn w)
 
+
 end
