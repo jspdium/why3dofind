@@ -1,0 +1,39 @@
+{
+  "profile": [],
+  "proofs": {
+    "RaftNet": {
+      "candidateWithQuorumIsElected": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.06
+      },
+      "deliverGrant": { "prover": "cvc5@1.0.3", "time": 0.038 },
+      "electedLeaderHasQuorum": { "prover": "cvc5@1.0.3", "time": 0.064 },
+      "electionSafety": { "prover": "cvc5@1.0.3", "time": 0.018 },
+      "grantsAreRealVotes": { "prover": "cvc5@1.0.3", "time": 0.055 },
+      "handleReqVote": { "prover": "cvc5@1.0.3", "time": 0.157 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.013 },
+      "initWorldN": { "prover": "cvc5@1.0.3", "time": 0.038 },
+      "initialStateMakesProgress": { "prover": "cvc5@1.0.3", "time": 0.095 },
+      "leaderUniquePerTerm": { "prover": "alt-ergo@2.4.2", "time": 0.017 },
+      "leaderWasElected": { "prover": "cvc5@1.0.3", "time": 0.058 },
+      "ledgerAppendOnly": { "prover": "alt-ergo@2.4.2", "time": 0.049 },
+      "netBecomeLeader": { "prover": "cvc5@1.0.3", "time": 0.071 },
+      "netObserveTerm": { "prover": "alt-ergo@2.4.2", "time": 0.091 },
+      "netTimeout": { "prover": "cvc5@1.0.3", "time": 0.087 },
+      "quorumGuardIsNotRestrictive": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.063
+      },
+      "receivedGrantsWereSent": { "prover": "cvc5@1.0.3", "time": 0.055 },
+      "requestTermsAreReached": { "prover": "cvc5@1.0.3", "time": 0.073 },
+      "sendReqVote": { "prover": "alt-ergo@2.4.2", "time": 0.018 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.034 },
+      "stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.054 },
+      "termMonotonic": { "prover": "alt-ergo@2.4.2", "time": 0.029 },
+      "voteGuardIsNotRestrictive": { "prover": "cvc5@1.0.3", "time": 0.077 },
+      "voteOncePerTerm": { "prover": "alt-ergo@2.4.2", "time": 0.015 },
+      "voteTermMonotonic": { "prover": "alt-ergo@2.4.2", "time": 0.104 }
+    }
+  }
+}

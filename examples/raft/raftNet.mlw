@@ -1,0 +1,356 @@
+(* ============================================================
+   Raft leader election — network machine (message passing).
+
+   Contribution by:
+     Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
+
+   Adapted to the why3do refinement framework.
+
+   Refines raftCore, and hence raftLedger.
+
+   The state embeds a raftCore state as a field, `base`, rather than
+   repeating its seven components.  The refinement map is then just the
+   projection, every action is `{ w with base = <core action> ... }`, and
+   the simulation obligations reduce to the corresponding core action
+   applied to `w.base`.  This is what stops the two machines duplicating
+   an invariant, as the three earlier raft models did.
+
+   State      base        the raftCore state
+              req_sent    req_sent[c,v,t]   : c asked v for a vote in t
+              grant_sent  grant_sent[v,c,t] : v granted c its vote in t
+              granted     granted[c,v,t]    : c has received that grant
+
+   Actions    netTimeout i          core timeout
+              netObserveTerm v x t  a voter that sees a request carrying
+                                    a term above its own adopts that term
+                                    and reverts to Follower, casting no
+                                    vote
+              sendReqVote c v t     a Candidate solicits a vote for its
+                                    current term
+              handleReqVote v c t   a voter answers a real request: it
+                                    grants the vote (core grantVote) and
+                                    posts the grant
+              deliverGrant c v t    a posted grant reaches the candidate
+              netBecomeLeader i q   a Candidate whose received grants
+                                    cover a quorum wins
+
+   Invariant  the core invariant of `base`, plus: a request names valid
+              nodes and a term the requester had reached; a posted grant
+              is a real vote; a received grant was posted.
+
+   The network is a monotone record of what has been sent, not a channel:
+   nothing is consumed, so a grant can be delivered late, more than once,
+   or never, and requests can be answered in any order.  That is strictly
+   more permissive than a FIFO queue, so safety here is the stronger
+   result — and it costs none of the list surgery that a queue model
+   needs.
+
+   Limitations
+     - Monotone sent-sets model delay, duplication and reordering, but
+       not loss with a bound, and messages are never garbage collected.
+       There is also no notion of a message being addressed to a node
+       that then discards it: a voter simply never handles the request.
+     - Requests carry no identity beyond (candidate, voter, term), so two
+       requests from the same candidate in the same term are the same
+       message.  Retransmission is therefore invisible.
+     - Refusals are not modelled.  A voter that will not grant simply
+       does not act, so there is no negative response and a candidate can
+       never learn that it lost.  Terms therefore propagate upward only
+       on requests, via netObserveTerm; adding a `refused` map carrying
+       the refuser's term would close this, at the cost of a fourth
+       network component.
+     - handleReqVote's guard includes the core guard grantVote_enbld.
+       Under the invariant that conjunct is implied by the rest, which
+       quorumGuardIsNotRestrictive and voteGuardIsNotRestrictive state
+       explicitly, so it constrains no reachable behaviour; it is there
+       so the action stays total and the core action can be applied
+       unconditionally.
+     - Election only: no logs, no log replication, no commit index.  No
+       AppendEntries, and therefore no way for a leader to maintain
+       authority or for a follower to learn who the leader is.
+     - Safety only.  Nothing shows a quorum of grants is ever collected,
+       so election is not shown reachable, and there is no fairness
+       assumption or timing model.
+     - n_nodes is fixed; nodes never crash or restart.
+   ============================================================ *)
+
+module RaftNet
+
+  use int.Int
+  use map.Map
+  use map.Const
+  use option.Option
+  use raftLedger.RaftLedger
+  use raftCore.RaftCore
+
+  type world = {
+    base       : core;
+    req_sent   : map (node, node, int) bool;
+    grant_sent : map (node, node, int) bool;
+    granted    : map (node, node, int) bool;
+  }
+
+  let function refnC (w : world) : core = w.base
+
+  (* ---------------------------------------------------------------- *)
+  (* Invariant                                                        *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate inv_req_wf (w : world) =
+    forall x v : node, t : int.
+      w.req_sent[(x, v, t)] ->
+        valid_node x /\ valid_node v /\ t >= 0 /\ t <= w.base.cur_term[x]
+
+  predicate inv_grant_is_vote (w : world) =
+    forall v x : node, t : int.
+      w.grant_sent[(v, x, t)] -> w.base.votes[(v, x, t)]
+
+  predicate inv_granted_was_sent (w : world) =
+    forall x v : node, t : int.
+      w.granted[(x, v, t)] -> w.grant_sent[(v, x, t)]
+
+  predicate invN (w : world) =
+    invC w.base /\
+    inv_req_wf w /\
+    inv_grant_is_vote w /\
+    inv_granted_was_sent w
+
+  predicate initWorldN_p (w : world) =
+    initWorldC_p w.base /\
+    w.req_sent   = const false /\
+    w.grant_sent = const false /\
+    w.granted    = const false
+
+  let ghost predicate initWorldN (w : world)
+    ensures { result -> invN w }
+    ensures { result -> RaftCore.initWorldC (refnC w) }
+  = initWorldN_p w
+
+  (* ---------------------------------------------------------------- *)
+  (* Actions                                                          *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate netTimeout_enbld (w : world) (i : node) =
+    timeout_enbld w.base i
+
+  let ghost function netTimeout (w : world) (i : node) : world
+    requires { netTimeout_enbld w i }
+    ensures  { result.base = timeout w.base i }
+    ensures  { result.req_sent = w.req_sent }
+    ensures  { result.grant_sent = w.grant_sent }
+    ensures  { result.granted = w.granted }
+    ensures  { invN w -> invN result }
+  = { w with base = timeout w.base i }
+
+  (* Raft's term rule at the network level: the term must have arrived
+     on a request addressed to v, so this is not a global read. *)
+  predicate netObserveTerm_enbld (w : world) (v x : node) (t : int) =
+    w.req_sent[(x, v, t)] /\ observeTerm_enbld w.base v t
+
+  let ghost function netObserveTerm (w : world) (v x : node) (t : int) : world
+    requires { netObserveTerm_enbld w v x t }
+    ensures  { result.base = observeTerm w.base v t }
+    ensures  { result.req_sent = w.req_sent }
+    ensures  { result.grant_sent = w.grant_sent }
+    ensures  { result.granted = w.granted }
+    ensures  { invN w -> invN result }
+  = { w with base = observeTerm w.base v t }
+
+  (* A Candidate solicits a vote for its own current term. *)
+  predicate sendReqVote_enbld (w : world) (x v : node) (t : int) =
+    valid_node x /\ valid_node v /\ x <> v /\
+    w.base.role[x] = Candidate /\ t = w.base.cur_term[x]
+
+  let ghost function sendReqVote (w : world) (x v : node) (t : int) : world
+    requires { sendReqVote_enbld w x v t }
+    ensures  { result.base = w.base }
+    ensures  { result.req_sent = w.req_sent[(x, v, t) <- true] }
+    ensures  { result.grant_sent = w.grant_sent }
+    ensures  { result.granted = w.granted }
+    ensures  { invN w -> invN result }
+  = { w with req_sent = w.req_sent[(x, v, t) <- true] }
+
+  (* A voter answers a request that was really sent to it: it grants the
+     vote in the core machine and posts the grant. *)
+  predicate handleReqVote_enbld (w : world) (v x : node) (t : int) =
+    w.req_sent[(x, v, t)] /\ grantVote_enbld w.base v x t
+
+  let ghost function handleReqVote (w : world) (v x : node) (t : int) : world
+    requires { handleReqVote_enbld w v x t }
+    ensures  { result.base = grantVote w.base v x t }
+    ensures  { result.req_sent = w.req_sent }
+    ensures  { result.grant_sent = w.grant_sent[(v, x, t) <- true] }
+    ensures  { result.granted = w.granted }
+    ensures  { invN w -> invN result }
+  = { w with
+      base       = grantVote w.base v x t;
+      grant_sent = w.grant_sent[(v, x, t) <- true] }
+
+  (* A posted grant reaches the candidate.  Delivery is separate from
+     sending, may happen at any later point, and may repeat. *)
+  predicate deliverGrant_enbld (w : world) (x v : node) (t : int) =
+    w.grant_sent[(v, x, t)]
+
+  let ghost function deliverGrant (w : world) (x v : node) (t : int) : world
+    requires { deliverGrant_enbld w x v t }
+    ensures  { result.base = w.base }
+    ensures  { result.req_sent = w.req_sent }
+    ensures  { result.grant_sent = w.grant_sent }
+    ensures  { result.granted = w.granted[(x, v, t) <- true] }
+    ensures  { invN w -> invN result }
+  = { w with granted = w.granted[(x, v, t) <- true] }
+
+  (* A Candidate whose received grants cover a quorum wins. *)
+  predicate netBecomeLeader_enbld (w : world) (i : node) (q : quorum) =
+    (forall v : node. member v q -> w.granted[(i, v, w.base.cur_term[i])])
+    /\ becomeLeader_enbld w.base i q
+
+  let ghost function netBecomeLeader (w : world) (i : node) (q : quorum) : world
+    requires { netBecomeLeader_enbld w i q }
+    ensures  { result.base = becomeLeader w.base i q }
+    ensures  { result.req_sent = w.req_sent }
+    ensures  { result.grant_sent = w.grant_sent }
+    ensures  { result.granted = w.granted }
+    ensures  { invN w -> invN result }
+  = { w with base = becomeLeader w.base i q }
+
+  (* ---------------------------------------------------------------- *)
+  (* Transition relation and refinement                               *)
+  (* ---------------------------------------------------------------- *)
+
+  inductive stepindN world world =
+    | step_netTimeout : forall w : world, i : node.
+        netTimeout_enbld w i -> stepindN w (netTimeout w i)
+    | step_netObserveTerm : forall w : world, v x : node, t : int.
+        netObserveTerm_enbld w v x t -> stepindN w (netObserveTerm w v x t)
+    | step_sendReqVote : forall w : world, x v : node, t : int.
+        sendReqVote_enbld w x v t -> stepindN w (sendReqVote w x v t)
+    | step_handleReqVote : forall w : world, v x : node, t : int.
+        handleReqVote_enbld w v x t -> stepindN w (handleReqVote w v x t)
+    | step_deliverGrant : forall w : world, x v : node, t : int.
+        deliverGrant_enbld w x v t -> stepindN w (deliverGrant w x v t)
+    | step_netBecomeLeader : forall w : world, i : node, q : quorum.
+        netBecomeLeader_enbld w i q -> stepindN w (netBecomeLeader w i q)
+
+  let ghost predicate stepN (w1 w2 : world) = stepindN w1 w2
+
+  clone export refinement.Refinement with
+    type worldC      = world,
+    type worldA      = core,
+    val refn         = refnC,
+    predicate invC   = invN,
+    predicate invA   = RaftCore.invC,
+    val initWorldC   = initWorldN,
+    val initWorldA   = RaftCore.initWorldC,
+    val stepC        = stepN,
+    val stepA        = RaftCore.stepC
+
+  (* ---------------------------------------------------------------- *)
+  (* Safety                                                           *)
+  (* ---------------------------------------------------------------- *)
+
+  goal electionSafety :
+    forall w : world, t : int, i j : node. reachableC w ->
+      w.base.elected[t] = Some i -> w.base.elected[t] = Some j -> i = j
+
+  goal leaderUniquePerTerm :
+    forall w : world, i j : node. reachableC w ->
+      valid_node i -> valid_node j ->
+      w.base.role[i] = Leader -> w.base.role[j] = Leader ->
+      w.base.cur_term[i] = w.base.cur_term[j] ->
+      i = j
+
+  goal leaderWasElected :
+    forall w : world, i : node. reachableC w -> valid_node i ->
+      w.base.role[i] = Leader ->
+      w.base.elected[w.base.cur_term[i]] = Some i
+
+  goal voteOncePerTerm :
+    forall w : world, v x y : node, t : int. reachableC w ->
+      valid_node v -> valid_node x -> valid_node y -> t >= 0 ->
+      w.base.votes[(v, x, t)] -> w.base.votes[(v, y, t)] -> x = y
+
+  goal electedLeaderHasQuorum :
+    forall w : world, t : int, ldr : node. reachableC w ->
+      w.base.elected[t] = Some ldr ->
+      forall v : node.
+        member v w.base.elected_q[t] -> w.base.votes[(v, ldr, t)]
+
+  (* Network properties: nothing is invented on the wire. *)
+  goal grantsAreRealVotes :
+    forall w : world, v x : node, t : int. reachableC w ->
+      w.grant_sent[(v, x, t)] -> w.base.votes[(v, x, t)]
+
+  goal receivedGrantsWereSent :
+    forall w : world, x v : node, t : int. reachableC w ->
+      w.granted[(x, v, t)] -> w.grant_sent[(v, x, t)]
+
+  goal requestTermsAreReached :
+    forall w : world, x v : node, t : int. reachableC w ->
+      w.req_sent[(x, v, t)] -> t <= w.base.cur_term[x]
+
+  goal termMonotonic :
+    forall w1 w2 : world. stepN w1 w2 ->
+      forall n : node. w1.base.cur_term[n] <= w2.base.cur_term[n]
+
+  goal voteTermMonotonic :
+    forall w1 w2 : world. reachableC w1 -> stepN w1 w2 ->
+      forall n : node. w1.base.vote_term[n] <= w2.base.vote_term[n]
+
+  goal ledgerAppendOnly :
+    forall w1 w2 : world. stepN w1 w2 ->
+      forall t : int, ldr : node.
+        w1.base.elected[t] = Some ldr -> w2.base.elected[t] = Some ldr
+
+  (* The two guards that mention the core machine are redundant on
+     reachable states: they follow from the network conditions plus the
+     invariant, so including them restricts no reachable behaviour. *)
+  goal quorumGuardIsNotRestrictive :
+    forall w : world, i : node, q : quorum. reachableC w ->
+      valid_node i -> w.base.role[i] = Candidate ->
+      (forall v : node. member v q -> w.granted[(i, v, w.base.cur_term[i])]) ->
+      becomeLeader_enbld w.base i q
+
+  goal voteGuardIsNotRestrictive :
+    forall w : world, v x : node, t : int. reachableC w ->
+      valid_node v -> valid_node x -> v <> x ->
+      w.req_sent[(x, v, t)] ->
+      w.base.vote_term[v] < t -> w.base.cur_term[v] <= t ->
+      grantVote_enbld w.base v x t
+
+  let lemma candidateWithQuorumIsElected (w : world) (i : node) (q : quorum)
+    requires { reachableC w }
+    requires { netBecomeLeader_enbld w i q }
+    ensures  { exists w' : world. stepN w w'
+               /\ w'.base.role[i] = Leader
+               /\ w'.base.elected[w'.base.cur_term[i]] = Some i }
+  =
+    assert { invN w };
+    let w' = netBecomeLeader w i q in
+    assert { stepindN w w' }
+
+  (* Non-vacuity: from the initial state the machine really moves, and a
+     request for a live term reaches the wire.  This rules out the
+     reading in which every guard is unsatisfiable and the safety goals
+     hold over a one-state system.  A witness for a completed election
+     is not available: quorum is abstract, so no term of that type can be
+     exhibited whose members have all granted. *)
+  let lemma initialStateMakesProgress (w : world) (i j : node)
+    requires { initWorldN w }
+    requires { valid_node i /\ valid_node j /\ i <> j }
+    ensures  { exists w1 w2 : world.
+                 stepN w w1 /\ stepN w1 w2
+                 /\ w2.base.role[i] = Candidate
+                 /\ w2.req_sent[(i, j, w2.base.cur_term[i])] }
+  =
+    let w1 = netTimeout w i in
+    assert { stepindN w w1 };
+    assert { w1.base.role[i] = Candidate };
+    let t = w1.base.cur_term[i] in
+    assert { sendReqVote_enbld w1 i j t };
+    let w2 = sendReqVote w1 i j t in
+    assert { stepindN w1 w2 }
+
+
+
+end

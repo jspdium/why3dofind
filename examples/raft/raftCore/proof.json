@@ -1,0 +1,30 @@
+{
+  "profile": [],
+  "proofs": {
+    "RaftCore": {
+      "becomeLeader": { "prover": "cvc5@1.0.3", "time": 0.045 },
+      "candidateWithQuorumIsElected": {
+        "prover": "cvc5@1.0.3",
+        "time": 0.024
+      },
+      "electedLeaderHasQuorum": { "prover": "cvc5@1.0.3", "time": 0.034 },
+      "electionSafety": { "prover": "cvc5@1.0.3", "time": 0.014 },
+      "grantVote": { "prover": "alt-ergo@2.4.2", "time": 0.068 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.006 },
+      "initWorldC": { "prover": "alt-ergo@2.4.2", "time": 0.013 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "leaderUniquePerTerm": { "prover": "alt-ergo@2.4.2", "time": 0.013 },
+      "leaderWasElected": { "prover": "cvc5@1.0.3", "time": 0.031 },
+      "ledgerAppendOnly": { "prover": "cvc5@1.0.3", "time": 0.039 },
+      "ledger_agrees": { "prover": "z3@4.11.2", "time": 0.026 },
+      "observeTerm": { "prover": "cvc5@1.0.3", "time": 0.03 },
+      "refnL_leaders": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "stepC'refn": { "prover": "cvc5@1.0.3", "time": 0.052 },
+      "termMonotonic": { "prover": "alt-ergo@2.4.2", "time": 0.012 },
+      "timeout": { "prover": "alt-ergo@2.4.2", "time": 0.06 },
+      "voteOncePerTerm": { "prover": "alt-ergo@2.4.2", "time": 0.011 },
+      "voteTermMonotonic": { "prover": "alt-ergo@2.4.2", "time": 0.029 }
+    }
+  }
+}

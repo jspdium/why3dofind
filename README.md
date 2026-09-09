@@ -22,7 +22,7 @@ examples/waitFreeRegister/
 examples/paxosNoRefinement/
                           Paxos consensus (stand-alone, no refinement)
 examples/paxos/            Paxos consensus, two-step refinement
-examples/raft/             Raft leader election (message-passing, shared-memory, refinement)
+examples/raft/             Raft leader election, three-step refinement chain (ledger → core → net)
 examples/dynamicBully/    Dynamic Bully leader election with crash/recovery, by refinement
 examples/controlledFlooding/
                           Controlled flooding broadcast, by refinement

@@ -1,0 +1,100 @@
+(* ============================================================
+   Raft leader election — abstract election ledger.
+
+   Contribution by:
+     Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
+
+   Adapted to the why3do refinement framework.
+
+   The top of a three-machine chain:
+
+     raftNet    message passing, delayed and duplicated grants
+       refines
+     raftCore   terms, votes, roles, quorums (shared memory)
+       refines
+     raftLedger this module
+
+   A ledger records, for each term, which node was elected in it.  An
+   election may fill a term that is still empty, or re-affirm the node
+   already recorded there, but never replace it with a different one.
+
+   State      leaders : map int (option node)
+   Action     elect t ldr
+   Invariant  trivially true
+
+   Election safety is structural: `option node` cannot hold two different
+   nodes for one term, so at most one leader per term needs no invariant
+   at all.  The refinement therefore transfers no abstract invariant, and
+   all of its content lies in the step simulation — a refining machine
+   must show that whenever it elects, it is not overwriting a different
+   entry.  That is where the quorum-intersection argument is discharged
+   in raftCore.  ledgerAppendOnly is the property that makes this the
+   right abstraction: an entry, once written, is permanent, so safety can
+   be stated over the whole history rather than over current roles.
+
+   Limitations
+     - The ledger is a specification device, not a component: nothing in
+       an implementation maintains it.  It exists so that safety can be
+       stated over the whole history rather than over the current roles,
+       which is what lets refining machines demote leaders freely.
+     - Terms are unbounded integers, and the ledger has an entry for
+       every term, so nothing here says elections are finite in number.
+   ============================================================ *)
+
+module RaftLedger
+
+  use int.Int
+  use map.Map
+  use map.Const
+  use option.Option
+
+  type node = int
+
+  type ledger = { leaders : map int (option node) }
+
+  predicate invL (_l : ledger) = true
+
+  predicate initWorldL_p (l : ledger) =
+    l.leaders = const None
+
+  let ghost predicate initWorldL (l : ledger)
+    ensures { result -> invL l }
+  = initWorldL_p l
+
+  predicate elect_enbld (l : ledger) (t : int) (ldr : node) =
+    t >= 0 /\ (l.leaders[t] = None \/ l.leaders[t] = Some ldr)
+
+  let ghost function elect (l : ledger) (t : int) (ldr : node) : ledger
+    requires { elect_enbld l t ldr }
+    ensures  { result.leaders = l.leaders[t <- Some ldr] }
+    ensures  { forall t' : int, x : node.
+                 l.leaders[t'] = Some x -> result.leaders[t'] = Some x }
+    ensures  { invL l -> invL result }
+  = { leaders = l.leaders[t <- Some ldr] }
+
+  inductive stepindL ledger ledger =
+    | step_elect : forall l : ledger, t : int, ldr : node.
+        elect_enbld l t ldr -> stepindL l (elect l t ldr)
+
+  let ghost predicate stepL (l1 l2 : ledger)
+    ensures { result -> invL l1 -> invL l2 }
+  = stepindL l1 l2
+
+  clone export inductiveness.Inductiveness with
+    type world      = ledger,
+    predicate inv   = invL,
+    val initWorld   = initWorldL,
+    val step        = stepL
+
+  goal atMostOneLeaderPerTerm :
+    forall l : ledger, t : int, i j : node. reachable l ->
+      l.leaders[t] = Some i -> l.leaders[t] = Some j -> i = j
+
+  (* An entry, once written, is never changed.  Unrestricted: it follows
+     from the elect guard alone, with no invariant needed. *)
+  goal ledgerAppendOnly :
+    forall l1 l2 : ledger. stepL l1 l2 ->
+      forall t : int, ldr : node.
+        l1.leaders[t] = Some ldr -> l2.leaders[t] = Some ldr
+
+end

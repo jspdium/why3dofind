@@ -61,10 +61,10 @@ install_pkg bullyDynamicFull                 examples/dynamicBully/bullyDynamicF
 # wip/petersonN (student project)
 install_pkg mutual_exclusion_spec            wip/petersonN/refinement/mutual_exclusion_spec.mlw
 
-# raft (student project: Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva)
-install_pkg raft_msg                        examples/raft/raft_msg.mlw
-install_pkg raft_shm                        examples/raft/raft_shm.mlw
-install_pkg raft_refi                       examples/raft/raft_refi.mlw
+# raft (refinement chain: raftLedger -> raftCore -> raftNet)
+install_pkg raftLedger                      examples/raft/raftLedger.mlw
+install_pkg raftCore                        examples/raft/raftCore.mlw
+install_pkg raftNet                         examples/raft/raftNet.mlw
 
 # controlledFlooding (student project: Gonçalo Caixeiro)
 install_pkg controlledFlooding              examples/controlledFlooding/controlledFlooding.mlw

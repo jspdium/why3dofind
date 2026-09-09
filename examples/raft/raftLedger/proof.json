@@ -1,0 +1,14 @@
+{
+  "profile": [],
+  "proofs": {
+    "RaftLedger": {
+      "atMostOneLeaderPerTerm": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "elect": { "prover": "cvc5@1.0.3", "time": 0.004 },
+      "initWorld'refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
+      "initWorldL": { "prover": "cvc5@1.0.3", "time": 0.003 },
+      "ledgerAppendOnly": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "step'refn": { "prover": "cvc5@1.0.3", "time": 0.002 },
+      "stepL": { "prover": "cvc5@1.0.3", "time": 0.003 }
+    }
+  }
+}

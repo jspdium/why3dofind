@@ -14,7 +14,7 @@
     "MutexSpec",
     "Lamport",
     "RicartAgrawala",
-    "raft_msg", "raft_shm", "raft_refi",
+    "raftLedger", "raftCore", "raftNet",
     "controlledFlooding"
   ],
   "provers": [

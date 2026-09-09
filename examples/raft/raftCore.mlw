@@ -1,0 +1,429 @@
+(* ============================================================
+   Raft leader election — core machine (shared memory).
+
+   Contribution by:
+     Ana Sá Oliveira, Edgar Araújo, Gabriel Paiva
+
+   Adapted to the why3do refinement framework.
+
+   Refines raftLedger.  Adds terms, per-node roles, votes and quorums.
+   Soliciting a vote and granting it are one atomic action, so there is
+   no message layer here; raftNet adds it and refines this machine.
+
+   State      cur_term   per-node current term
+              role       Follower | Candidate | Leader
+              vote_term  term of the node's current vote (-1 = none)
+              voted_for  who it voted for in vote_term
+              votes      ghost: votes[v,c,t] = v voted for c in term t
+              elected    ghost: the node elected in each term
+              elected_q  ghost: the quorum that elected it
+
+   Actions    timeout i        become Candidate at term+1, voting for self
+              observeTerm i t  i learns of a higher term t: it adopts t
+                               and reverts to Follower without voting
+              grantVote v c t  v adopts term t, reverts to Follower and
+                               votes for c, provided it has not voted in
+                               t already and t is at least its own term
+              becomeLeader i q a Candidate holding a quorum of votes for
+                               its current term becomes Leader and is
+                               recorded in the ledger
+
+   Invariant  terms and vote terms in range; a vote's term never exceeds
+              the voter's current term; the ghost votes map and the
+              concrete vote fields agree in both directions; a node votes
+              at most once per term; voted_for is a valid node; a
+              recorded election is backed by a quorum of votes; and a
+              Leader is the node recorded for its current term.
+
+   Election safety is carried by the ledger, not by roles, so nothing has
+   to freeze leadership: grantVote demotes a Leader and raises its term,
+   as Raft does.  Role-level uniqueness then follows, since two Leaders
+   at one term would both be the node recorded for it.
+
+   All actions are total — their only precondition is their own guard —
+   so facts about a step that do not depend on the invariant hold
+   unconditionally, and step lemmas need no reachability hypothesis.
+   Invariant-dependent reasoning lives in `let lemma`s that take inv as a
+   precondition.
+
+   Limitations
+     - Quorums are abstract: `member` is uninterpreted and
+       quorum_overlap is an assumption, not the pigeonhole principle.
+       Nothing relates quorums to majorities.  The axiom is also what
+       forces quorums non-empty — without it an empty q would satisfy
+       becomeLeader's guard vacuously.
+     - grantVote's guard is the voter's local check.  It does not require
+       the candidate to have reached term t, nor to be a Candidate now:
+       both are facts about the requester that a voter cannot observe,
+       and raftNet supplies them from the request message instead.
+     - observeTerm is how a stale Candidate or Leader steps down: it is
+       the only way to adopt a higher term without casting a vote, and it
+       is what stops a node that has already voted in t being stuck below
+       t for ever.  Which terms a node may observe is unconstrained here;
+       raftNet ties it to a term that actually arrived on a message.
+     - Two nodes may still hold the Leader role at once at different
+       terms, which is what Raft permits: nothing forces a superseded
+       leader to observe the newer term.
+     - Election only: no logs, no log replication, no commit index.
+     - Safety only.  candidateWithQuorumIsElected is a one-step witness;
+       nothing shows a quorum is ever accumulated, so election is not
+       shown reachable.
+     - n_nodes is fixed; nodes never crash or restart.
+   ============================================================ *)
+
+module RaftCore
+
+  use int.Int
+  use map.Map
+  use map.Const
+  use option.Option
+  use raftLedger.RaftLedger
+
+  type role = Follower | Candidate | Leader
+
+  val constant n_nodes : int
+  axiom n_nodes_pos : n_nodes >= 2
+
+  predicate valid_node (i : node) = 0 <= i < n_nodes
+
+  (* ---------------------------------------------------------------- *)
+  (* Abstract quorums                                                 *)
+  (* ---------------------------------------------------------------- *)
+
+  type quorum
+  predicate member node quorum
+
+  val constant default_quorum : quorum
+
+  axiom quorum_validity :
+    forall q : quorum, v : node. member v q -> valid_node v
+
+  axiom quorum_overlap :
+    forall q1 q2 : quorum.
+      exists v : node. valid_node v /\ member v q1 /\ member v q2
+
+  (* ---------------------------------------------------------------- *)
+  (* State                                                            *)
+  (* ---------------------------------------------------------------- *)
+
+  type core = {
+    cur_term  : map node int;
+    role      : map node role;
+    vote_term : map node int;
+    voted_for : map node node;
+    votes     : map (node, node, int) bool;
+    elected   : map int (option node);
+    elected_q : map int quorum;
+  }
+
+  let function refnL (c : core) : ledger = { leaders = c.elected }
+
+  lemma refnL_leaders :
+    forall c : core, t : int. (refnL c).leaders[t] = c.elected[t]
+
+  (* ---------------------------------------------------------------- *)
+  (* Inductive invariant                                              *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate inv_sanity (c : core) =
+    forall i : node. valid_node i ->
+      c.cur_term[i] >= 0 /\ c.vote_term[i] >= -1
+
+  predicate inv_vote_le_term (c : core) =
+    forall i : node. valid_node i -> c.vote_term[i] <= c.cur_term[i]
+
+  (* Ghost to concrete: a recorded vote is reflected in the voter. *)
+  predicate inv_vote_recorded (c : core) =
+    forall v x : node, t : int.
+      valid_node v -> valid_node x -> t >= 0 -> c.votes[(v, x, t)] ->
+        c.vote_term[v] >= t /\ (c.vote_term[v] = t -> c.voted_for[v] = x)
+
+  (* Concrete to ghost: the voter's current vote is in the map. *)
+  predicate inv_current_vote_in_map (c : core) =
+    forall v : node. valid_node v -> c.vote_term[v] >= 0 ->
+      c.votes[(v, c.voted_for[v], c.vote_term[v])]
+
+  predicate inv_vote_once (c : core) =
+    forall v x y : node, t : int.
+      valid_node v -> valid_node x -> valid_node y -> t >= 0 ->
+        c.votes[(v, x, t)] -> c.votes[(v, y, t)] -> x = y
+
+  predicate inv_voted_for_valid (c : core) =
+    forall v : node. valid_node v -> c.vote_term[v] >= 0 ->
+      valid_node c.voted_for[v]
+
+  predicate inv_ledger (c : core) =
+    forall t : int, ldr : node.
+      c.elected[t] = Some ldr ->
+        valid_node ldr /\
+        (forall v : node. member v c.elected_q[t] -> c.votes[(v, ldr, t)])
+
+  predicate inv_leader_elected (c : core) =
+    forall i : node. valid_node i -> c.role[i] = Leader ->
+      c.elected[c.cur_term[i]] = Some i
+
+  predicate invC (c : core) =
+    inv_sanity              c /\
+    inv_vote_le_term        c /\
+    inv_vote_recorded       c /\
+    inv_current_vote_in_map c /\
+    inv_vote_once           c /\
+    inv_voted_for_valid     c /\
+    inv_ledger              c /\
+    inv_leader_elected      c
+
+  (* ---------------------------------------------------------------- *)
+  (* Initial state                                                    *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate initWorldC_p (c : core) =
+    c.cur_term  = const 0        /\
+    c.role      = const Follower /\
+    c.vote_term = const (-1)     /\
+    c.voted_for = const 0        /\
+    c.votes     = const false    /\
+    c.elected   = const None     /\
+    c.elected_q = const default_quorum
+
+  let ghost predicate initWorldC (c : core)
+    ensures { result -> invC c }
+    ensures { result -> RaftLedger.initWorldL (refnL c) }
+  = initWorldC_p c
+
+  (* ---------------------------------------------------------------- *)
+  (* A1. Timeout                                                      *)
+  (* ---------------------------------------------------------------- *)
+
+  (* Enabled in any role: safety is ledger-based, so excluding Leader
+     would buy nothing. *)
+  predicate timeout_enbld (c : core) (i : node) =
+    valid_node i
+
+  let ghost function timeout (c : core) (i : node) : core
+    requires { timeout_enbld c i }
+    ensures  { result.cur_term = c.cur_term[i <- c.cur_term[i] + 1] }
+    ensures  { result.role = c.role[i <- Candidate] }
+    ensures  { result.votes = c.votes[(i, i, c.cur_term[i] + 1) <- true] }
+    ensures  { result.elected = c.elected }
+    ensures  { result.elected_q = c.elected_q }
+    ensures  { forall n : node. c.cur_term[n] <= result.cur_term[n] }
+    ensures  { invC c ->
+                 forall n : node. c.vote_term[n] <= result.vote_term[n] }
+    ensures  { refnL result = refnL c }
+    ensures  { invC c -> invC result }
+  =
+    let t = c.cur_term[i] + 1 in
+    { c with
+      cur_term  = c.cur_term [i <- t];
+      role      = c.role     [i <- Candidate];
+      vote_term = c.vote_term[i <- t];
+      voted_for = c.voted_for[i <- i];
+      votes     = c.votes[(i, i, t) <- true];
+    }
+
+  (* ---------------------------------------------------------------- *)
+  (* A2. Granting a vote                                              *)
+  (* ---------------------------------------------------------------- *)
+
+  (* v adopts term t, reverts to Follower and votes for x.  Every
+     conjunct is something v can check locally. *)
+  predicate grantVote_enbld (c : core) (v x : node) (t : int) =
+    valid_node v /\ valid_node x /\ v <> x /\ t >= 0 /\
+    c.vote_term[v] < t /\ c.cur_term[v] <= t
+
+  let ghost function grantVote (c : core) (v x : node) (t : int) : core
+    requires { grantVote_enbld c v x t }
+    ensures  { result.cur_term = c.cur_term[v <- t] }
+    ensures  { result.votes = c.votes[(v, x, t) <- true] }
+    ensures  { result.votes[(v, x, t)] }
+    ensures  { result.elected = c.elected }
+    ensures  { result.elected_q = c.elected_q }
+    ensures  { forall n : node. c.cur_term[n] <= result.cur_term[n] }
+    ensures  { forall n : node. c.vote_term[n] <= result.vote_term[n] }
+    ensures  { refnL result = refnL c }
+    ensures  { invC c -> invC result }
+  =
+    { c with
+      cur_term  = c.cur_term [v <- t];
+      role      = c.role     [v <- Follower];
+      vote_term = c.vote_term[v <- t];
+      voted_for = c.voted_for[v <- x];
+      votes     = c.votes[(v, x, t) <- true];
+    }
+
+  (* ---------------------------------------------------------------- *)
+  (* A3. Observing a higher term                                      *)
+  (* ---------------------------------------------------------------- *)
+
+  (* Raft's term rule: on learning of a term above its own, a node adopts
+     it and reverts to Follower.  Unlike grantVote this casts no vote, so
+     it applies to a node that has already voted in t, and to a stale
+     Candidate or Leader. *)
+  predicate observeTerm_enbld (c : core) (i : node) (t : int) =
+    valid_node i /\ c.cur_term[i] < t
+
+  let ghost function observeTerm (c : core) (i : node) (t : int) : core
+    requires { observeTerm_enbld c i t }
+    ensures  { result.cur_term = c.cur_term[i <- t] }
+    ensures  { result.role = c.role[i <- Follower] }
+    ensures  { result.vote_term = c.vote_term }
+    ensures  { result.voted_for = c.voted_for }
+    ensures  { result.votes = c.votes }
+    ensures  { result.elected = c.elected }
+    ensures  { result.elected_q = c.elected_q }
+    ensures  { forall n : node. c.cur_term[n] <= result.cur_term[n] }
+    ensures  { forall n : node. c.vote_term[n] <= result.vote_term[n] }
+    ensures  { refnL result = refnL c }
+    ensures  { invC c -> invC result }
+  =
+    { c with
+      cur_term = c.cur_term[i <- t];
+      role     = c.role    [i <- Follower];
+    }
+
+  (* ---------------------------------------------------------------- *)
+  (* A4. Becoming leader                                              *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate becomeLeader_enbld (c : core) (i : node) (q : quorum) =
+    valid_node i /\
+    c.role[i] = Candidate /\
+    (forall v : node. member v q -> c.votes[(v, i, c.cur_term[i])])
+
+  (* If the term already has a recorded leader it must be this node.
+     This is the only place quorum intersection and vote uniqueness are
+     used, and it is what discharges the abstract elect guard. *)
+  let lemma ledger_agrees (c : core) (i j : node) (q : quorum)
+    requires { invC c }
+    requires { becomeLeader_enbld c i q }
+    requires { c.elected[c.cur_term[i]] = Some j }
+    ensures  { i = j }
+  =
+    let t = c.cur_term[i] in
+    assert { valid_node j };
+    assert { forall v : node.
+               member v c.elected_q[t] -> c.votes[(v, j, t)] };
+    assert { exists v : node.
+               valid_node v /\ member v q /\ member v c.elected_q[t] };
+    assert { exists v : node.
+               valid_node v /\ c.votes[(v, i, t)] /\ c.votes[(v, j, t)] }
+
+  let ghost function becomeLeader (c : core) (i : node) (q : quorum) : core
+    requires { becomeLeader_enbld c i q }
+    ensures  { result.cur_term = c.cur_term }
+    ensures  { result.role = c.role[i <- Leader] }
+    ensures  { result.vote_term = c.vote_term }
+    ensures  { result.voted_for = c.voted_for }
+    ensures  { result.votes = c.votes }
+    ensures  { forall n : node. c.vote_term[n] <= result.vote_term[n] }
+    ensures  { forall t' : int, x : node.
+                 c.elected[t'] = Some x -> result.elected[t'] = Some x }
+    ensures  { invC c -> result.elected[c.cur_term[i]] = Some i }
+    ensures  { invC c -> invC result }
+    ensures  { invC c -> refnL result = refnL c
+                      \/ RaftLedger.stepL (refnL c) (refnL result) }
+  =
+    let t = c.cur_term[i] in
+    match c.elected[t] with
+    | Some j ->
+        assert { invC c -> i = j };
+        { c with role = c.role[i <- Leader] }
+    | None ->
+        assert { invC c -> RaftLedger.elect_enbld (refnL c) t i };
+        { c with
+          role      = c.role[i <- Leader];
+          elected   = c.elected[t <- Some i];
+          elected_q = c.elected_q[t <- q];
+        }
+    end
+
+  (* ---------------------------------------------------------------- *)
+  (* Transition relation and refinement                               *)
+  (* ---------------------------------------------------------------- *)
+
+  inductive stepindC core core =
+    | step_timeout : forall c : core, i : node.
+        timeout_enbld c i -> stepindC c (timeout c i)
+    | step_observeTerm : forall c : core, i : node, t : int.
+        observeTerm_enbld c i t -> stepindC c (observeTerm c i t)
+    | step_grantVote : forall c : core, v x : node, t : int.
+        grantVote_enbld c v x t -> stepindC c (grantVote c v x t)
+    | step_becomeLeader : forall c : core, i : node, q : quorum.
+        becomeLeader_enbld c i q -> stepindC c (becomeLeader c i q)
+
+  let ghost predicate stepC (c1 c2 : core) = stepindC c1 c2
+
+  clone export refinement.Refinement with
+    type worldC      = core,
+    type worldA      = ledger,
+    val refn         = refnL,
+    predicate invC   = invC,
+    predicate invA   = RaftLedger.invL,
+    val initWorldC   = initWorldC,
+    val initWorldA   = RaftLedger.initWorldL,
+    val stepC        = stepC,
+    val stepA        = RaftLedger.stepL
+
+  (* ---------------------------------------------------------------- *)
+  (* Safety                                                           *)
+  (* ---------------------------------------------------------------- *)
+
+  goal electionSafety :
+    forall c : core, t : int, i j : node. reachableC c ->
+      c.elected[t] = Some i -> c.elected[t] = Some j -> i = j
+
+  goal leaderUniquePerTerm :
+    forall c : core, i j : node. reachableC c ->
+      valid_node i -> valid_node j ->
+      c.role[i] = Leader -> c.role[j] = Leader ->
+      c.cur_term[i] = c.cur_term[j] ->
+      i = j
+
+  goal leaderWasElected :
+    forall c : core, i : node. reachableC c -> valid_node i ->
+      c.role[i] = Leader -> c.elected[c.cur_term[i]] = Some i
+
+  goal voteOncePerTerm :
+    forall c : core, v x y : node, t : int. reachableC c ->
+      valid_node v -> valid_node x -> valid_node y -> t >= 0 ->
+      c.votes[(v, x, t)] -> c.votes[(v, y, t)] -> x = y
+
+  (* Stated with the witness exposed: the ledger records which quorum
+     elected each leader, so there is no need to hide it behind an
+     existential. *)
+  goal electedLeaderHasQuorum :
+    forall c : core, t : int, ldr : node. reachableC c ->
+      c.elected[t] = Some ldr ->
+      forall v : node. member v c.elected_q[t] -> c.votes[(v, ldr, t)]
+
+  (* Unrestricted: the actions are total, so this needs no reachability
+     hypothesis. *)
+  goal termMonotonic :
+    forall c1 c2 : core. stepC c1 c2 ->
+      forall n : node. c1.cur_term[n] <= c2.cur_term[n]
+
+  (* Needs the invariant: timeout raises vote_term to cur_term + 1, which
+     only exceeds the old vote_term because inv_vote_le_term bounds it. *)
+  goal voteTermMonotonic :
+    forall c1 c2 : core. reachableC c1 -> stepC c1 c2 ->
+      forall n : node. c1.vote_term[n] <= c2.vote_term[n]
+
+  goal ledgerAppendOnly :
+    forall c1 c2 : core. stepC c1 c2 ->
+      forall t : int, ldr : node.
+        c1.elected[t] = Some ldr -> c2.elected[t] = Some ldr
+
+  let lemma candidateWithQuorumIsElected (c : core) (i : node) (q : quorum)
+    requires { reachableC c }
+    requires { becomeLeader_enbld c i q }
+    ensures  { exists c' : core. stepC c c'
+               /\ c'.role[i] = Leader
+               /\ c'.elected[c'.cur_term[i]] = Some i }
+  =
+    assert { invC c };
+    let c' = becomeLeader c i q in
+    assert { stepindC c c' }
+
+  
+
+end
