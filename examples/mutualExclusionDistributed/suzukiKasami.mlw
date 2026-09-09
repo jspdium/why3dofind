@@ -1,0 +1,365 @@
+(* ============================================================
+   Suzuki-Kasami distributed mutual exclusion.
+
+   Refines TokenMutex, and hence MutexSpec.
+
+   A single token circulates.  A process that wants the critical section
+   broadcasts a numbered request; the token holder passes the token to a
+   requester whose latest request it has not yet served.
+
+   State      tok       where the token is: held by a process, or in
+                        flight to one
+              crit      who is in the critical section
+              rn        rn[i][j] : the largest request number i has heard
+                        from j
+              ln        ln[j] : the request number of j most recently
+                        served — travels with the token
+              queue     processes waiting to be served — travels with the
+                        token
+              req_sent  req_sent[j,sn] : j has broadcast request number sn
+
+   Actions    request i         i bumps its own counter and broadcasts
+              recvRequest i j sn i records a request it has heard from j
+              enqueue i j       the holder notes that j has an unserved
+                                request
+              sendToken i j     the holder passes the token to a queued j
+              recvToken j       the token arrives
+              enterCS i         the holder enters its CS
+              exitCS i          it leaves, recording the request it served
+
+   Invariant  the token is at a valid process; a process in its CS holds
+              the token; the token's current location is not queued; no
+              process knows more about j's requests than j does
+              (rn[i][j] <= rn[j][j]); a served request number never
+              exceeds the requester's own (ln[j] <= rn[j][j]); a
+              broadcast request number is one the sender has reached; and
+              a queued process has an unserved request (ln[p] < rn[p][p]).
+
+   Mutual exclusion is inherited from TokenMutex — it needs only the
+   second conjunct — so the sequence-number machinery is not what carries
+   it.  The last four conjuncts are what the RN/LN bookkeeping is for,
+   and they chain: a broadcast number is bounded by the sender's counter,
+   which bounds every other process's knowledge, which is what makes the
+   enqueue condition rn[i][j] = ln[j] + 1 imply that j really does have
+   an unserved request.
+
+   Limitations
+     - The token's queue is a set, not a FIFO list.  sendToken may pick
+       any queued process.  This is more permissive than the algorithm,
+       so safety here is the stronger result, but it discards the arrival
+       order that Suzuki-Kasami relies on for starvation-freedom.
+     - ln and queue are modelled as global fields rather than as a
+       payload carried by the token.  That is sound because there is
+       exactly one token and only its location reads or writes them, but
+       it means the model does not exhibit the payload travelling.
+     - Requests are a monotone broadcast record, not a channel: a request
+       is never consumed, so it may be received late, repeatedly, or
+       never, and there is no loss bound.  Reception is idempotent since
+       rn only ever rises.
+     - Safety only.  Starvation-freedom is Suzuki-Kasami's real theorem
+       and it is out of scope: it needs the FIFO queue, a fairness
+       assumption, and liveness machinery this library does not have.
+     - Processes do not fail, and the token is never lost.
+   ============================================================ *)
+
+module SuzukiKasami
+
+  use int.Int
+  use map.Map
+  use MutexSpec.MutexSpec
+  use tokenMutex.TokenMutex
+
+  type tokenLoc = Held MutexSpec.pid | InFlight MutexSpec.pid
+
+  type world = {
+    tok      : tokenLoc;
+    crit     : map MutexSpec.pid bool;
+    rn       : map MutexSpec.pid (map MutexSpec.pid int);
+    ln       : map MutexSpec.pid int;
+    queue    : map MutexSpec.pid bool;
+    req_sent : map (MutexSpec.pid, int) bool;
+  }
+
+  function tokenAt (w: world) : MutexSpec.pid =
+    match w.tok with Held p -> p | InFlight p -> p end
+
+  let ghost function refn (w: world) : TokenMutex.world =
+    { TokenMutex.token =
+        (fun p -> match w.tok with
+                  | Held q -> if q = p then true else false
+                  | InFlight _ -> false
+                  end);
+      TokenMutex.inCrit = w.crit }
+
+  lemma refn_token :
+    forall w: world, p: MutexSpec.pid.
+      (refn w).TokenMutex.token[p] <-> w.tok = Held p
+
+  lemma refn_inCrit :
+    forall w: world, p: MutexSpec.pid.
+      (refn w).TokenMutex.inCrit[p] = w.crit[p]
+
+  (* ---------------------------------------------------------------- *)
+  (* Inductive invariant                                              *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate inv_token_valid (w: world) =
+    valid_p (tokenAt w)
+
+  predicate inv_crit_holds (w: world) =
+    forall p: MutexSpec.pid. valid_p p -> w.crit[p] -> w.tok = Held p
+
+  (* Wherever the token is, that process is not waiting in the queue. *)
+  predicate inv_token_not_queued (w: world) =
+    not w.queue[tokenAt w]
+
+  (* Nobody knows more about j's requests than j itself. *)
+  predicate inv_rn_source (w: world) =
+    forall i j: MutexSpec.pid. valid_p i -> valid_p j ->
+      w.rn[i][j] <= w.rn[j][j]
+
+  predicate inv_ln_own (w: world) =
+    forall j: MutexSpec.pid. valid_p j -> w.ln[j] <= w.rn[j][j]
+
+  predicate inv_req_real (w: world) =
+    forall j: MutexSpec.pid, sn: int. valid_p j ->
+      w.req_sent[(j, sn)] -> sn <= w.rn[j][j]
+
+  (* A queued process really does have a request that has not been
+     served.  This is what the enqueue condition buys. *)
+  predicate inv_queue_outstanding (w: world) =
+    forall p: MutexSpec.pid. valid_p p ->
+      w.queue[p] -> w.ln[p] < w.rn[p][p]
+
+  predicate inv (w: world) =
+    inv_token_valid       w /\
+    inv_crit_holds        w /\
+    inv_token_not_queued  w /\
+    inv_rn_source         w /\
+    inv_ln_own            w /\
+    inv_req_real          w /\
+    inv_queue_outstanding w
+
+  predicate initWorld_p (w: world) =
+    w.tok = Held 0 /\
+    (forall p: MutexSpec.pid. valid_p p -> not w.crit[p]) /\
+    (forall i j: MutexSpec.pid. valid_p i -> valid_p j -> w.rn[i][j] = 0) /\
+    (forall j: MutexSpec.pid. valid_p j -> w.ln[j] = 0) /\
+    (forall p: MutexSpec.pid. valid_p p -> not w.queue[p]) /\
+    (forall j: MutexSpec.pid, sn: int. not w.req_sent[(j, sn)])
+
+  let ghost predicate initWorld (w: world)
+    ensures { result -> inv w }
+    ensures { result -> TokenMutex.initWorld (refn w) }
+  = initWorld_p w
+
+  (* ---------------------------------------------------------------- *)
+  (* Requesting                                                       *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate request_enbld (w: world) (i: MutexSpec.pid) =
+    valid_p i
+
+  let ghost function request (w: world) (i: MutexSpec.pid) : world
+    requires { request_enbld w i }
+    ensures  { result.tok = w.tok }
+    ensures  { result.crit = w.crit }
+    ensures  { result.queue = w.queue }
+    ensures  { result.ln = w.ln }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> inv result }
+  =
+    let sn = w.rn[i][i] + 1 in
+    { w with
+      rn       = w.rn[i <- (w.rn[i])[i <- sn]];
+      req_sent = w.req_sent[(i, sn) <- true] }
+
+  (* i learns of a request from j.  i <> j: a process never has to be
+     told its own request, and the guard would be unsatisfiable anyway
+     since inv_req_real bounds sn by rn[j][j]. *)
+  predicate recvRequest_enbld (w: world) (i j: MutexSpec.pid) (sn: int) =
+    valid_p i /\ valid_p j /\ i <> j /\
+    w.req_sent[(j, sn)] /\ w.rn[i][j] < sn
+
+  let ghost function recvRequest (w: world) (i j: MutexSpec.pid) (sn: int)
+    : world
+    requires { recvRequest_enbld w i j sn }
+    ensures  { result.tok = w.tok }
+    ensures  { result.crit = w.crit }
+    ensures  { result.queue = w.queue }
+    ensures  { result.ln = w.ln }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> inv result }
+  = { w with rn = w.rn[i <- (w.rn[i])[j <- sn]] }
+
+  (* ---------------------------------------------------------------- *)
+  (* Token queue                                                      *)
+  (* ---------------------------------------------------------------- *)
+
+  (* The holder notes an unserved request from j.  rn[i][j] = ln[j] + 1
+     is the algorithm's outstanding-request test. *)
+  predicate enqueue_enbld (w: world) (i j: MutexSpec.pid) =
+    valid_p i /\ valid_p j /\ i <> j /\
+    w.tok = Held i /\ not w.crit[i] /\
+    not w.queue[j] /\ w.rn[i][j] = w.ln[j] + 1
+
+  let ghost function enqueue (w: world) (i j: MutexSpec.pid) : world
+    requires { enqueue_enbld w i j }
+    ensures  { result.tok = w.tok }
+    ensures  { result.crit = w.crit }
+    ensures  { result.rn = w.rn }
+    ensures  { result.ln = w.ln }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> inv result }
+  = { w with queue = w.queue[j <- true] }
+
+  predicate sendToken_enbld (w: world) (i j: MutexSpec.pid) =
+    valid_p i /\ valid_p j /\ w.tok = Held i /\
+    not w.crit[i] /\ w.queue[j]
+
+  let ghost function sendToken (w: world) (i j: MutexSpec.pid) : world
+    requires { sendToken_enbld w i j }
+    ensures  { result.tok = InFlight j }
+    ensures  { result.crit = w.crit }
+    ensures  { result.rn = w.rn }
+    ensures  { result.ln = w.ln }
+    ensures  { result.queue = w.queue[j <- false] }
+    ensures  { TokenMutex.yieldToken_enbld (refn w) i }
+    ensures  { refn result = TokenMutex.yieldToken (refn w) i }
+    ensures  { inv w -> inv result }
+  = { w with tok = InFlight j; queue = w.queue[j <- false] }
+
+  predicate recvToken_enbld (w: world) (j: MutexSpec.pid) =
+    valid_p j /\ w.tok = InFlight j
+
+  let ghost function recvToken (w: world) (j: MutexSpec.pid) : world
+    requires { recvToken_enbld w j }
+    ensures  { result.tok = Held j }
+    ensures  { result.crit = w.crit }
+    ensures  { result.rn = w.rn }
+    ensures  { result.ln = w.ln }
+    ensures  { result.queue = w.queue }
+    ensures  { TokenMutex.acquireToken_enbld (refn w) j }
+    ensures  { refn result = TokenMutex.acquireToken (refn w) j }
+    ensures  { inv w -> inv result }
+  = { w with tok = Held j }
+
+  (* ---------------------------------------------------------------- *)
+  (* Critical section                                                 *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate enterCS_enbld (w: world) (i: MutexSpec.pid) =
+    valid_p i /\ w.tok = Held i /\ not w.crit[i]
+
+  let ghost function enterCS (w: world) (i: MutexSpec.pid) : world
+    requires { enterCS_enbld w i }
+    ensures  { result.tok = w.tok }
+    ensures  { result.crit = w.crit[i <- true] }
+    ensures  { result.rn = w.rn }
+    ensures  { result.ln = w.ln }
+    ensures  { result.queue = w.queue }
+    ensures  { TokenMutex.enter_enbld (refn w) i }
+    ensures  { refn result = TokenMutex.enter (refn w) i }
+    ensures  { inv w -> inv result }
+  = { w with crit = w.crit[i <- true] }
+
+  (* On leaving, i records the request number it has just served.  This
+     is where ln moves, and inv_token_not_queued is what keeps
+     inv_queue_outstanding true across it: i holds the token, so i is not
+     in the queue, so raising ln[i] to rn[i][i] breaks nothing. *)
+  predicate exitCS_enbld (w: world) (i: MutexSpec.pid) =
+    valid_p i /\ w.crit[i]
+
+  let ghost function exitCS (w: world) (i: MutexSpec.pid) : world
+    requires { exitCS_enbld w i }
+    ensures  { result.tok = w.tok }
+    ensures  { result.crit = w.crit[i <- false] }
+    ensures  { result.rn = w.rn }
+    ensures  { result.queue = w.queue }
+    ensures  { result.ln = w.ln[i <- w.rn[i][i]] }
+    ensures  { inv w -> TokenMutex.leave_enbld (refn w) i }
+    ensures  { refn result = TokenMutex.leave (refn w) i }
+    ensures  { inv w -> inv result }
+  = { w with crit = w.crit[i <- false]; ln = w.ln[i <- w.rn[i][i]] }
+
+  (* ---------------------------------------------------------------- *)
+  (* Transition relation and refinement                               *)
+  (* ---------------------------------------------------------------- *)
+
+  inductive stepind world world =
+    | step_request : forall w: world, i: MutexSpec.pid.
+        request_enbld w i -> stepind w (request w i)
+    | step_recvRequest : forall w: world, i j: MutexSpec.pid, sn: int.
+        recvRequest_enbld w i j sn -> stepind w (recvRequest w i j sn)
+    | step_enqueue : forall w: world, i j: MutexSpec.pid.
+        enqueue_enbld w i j -> stepind w (enqueue w i j)
+    | step_sendToken : forall w: world, i j: MutexSpec.pid.
+        sendToken_enbld w i j -> stepind w (sendToken w i j)
+    | step_recvToken : forall w: world, j: MutexSpec.pid.
+        recvToken_enbld w j -> stepind w (recvToken w j)
+    | step_enterCS : forall w: world, i: MutexSpec.pid.
+        enterCS_enbld w i -> stepind w (enterCS w i)
+    | step_exitCS : forall w: world, i: MutexSpec.pid.
+        exitCS_enbld w i -> stepind w (exitCS w i)
+
+  let ghost predicate step (w1: world) (w2: world) = stepind w1 w2
+
+  clone export refinement.Refinement with
+    type worldC      = world,
+    type worldA      = TokenMutex.world,
+    val refn         = refn,
+    predicate invC   = inv,
+    predicate invA   = TokenMutex.inv,
+    val initWorldC   = initWorld,
+    val initWorldA   = TokenMutex.initWorld,
+    val stepC        = step,
+    val stepA        = TokenMutex.step
+
+  (* ---------------------------------------------------------------- *)
+  (* Safety                                                           *)
+  (* ---------------------------------------------------------------- *)
+
+  goal mutualExclusion :
+    forall w: world, p q: MutexSpec.pid. reachableC w ->
+      valid_p p -> valid_p q -> w.crit[p] -> w.crit[q] -> p = q
+
+  goal inCSHoldsToken :
+    forall w: world, p: MutexSpec.pid. reachableC w ->
+      valid_p p -> w.crit[p] -> w.tok = Held p
+
+  (* The sequence-number properties: these are what the RN/LN
+     bookkeeping is for, and none of them follows from the token alone. *)
+  goal knowledgeBoundedBySource :
+    forall w: world, i j: MutexSpec.pid. reachableC w ->
+      valid_p i -> valid_p j -> w.rn[i][j] <= w.rn[j][j]
+
+  goal servedBoundedByRequested :
+    forall w: world, j: MutexSpec.pid. reachableC w ->
+      valid_p j -> w.ln[j] <= w.rn[j][j]
+
+  goal broadcastRequestsAreReal :
+    forall w: world, j: MutexSpec.pid, sn: int. reachableC w ->
+      valid_p j -> w.req_sent[(j, sn)] -> sn <= w.rn[j][j]
+
+  goal queuedProcessesWantTheToken :
+    forall w: world, p: MutexSpec.pid. reachableC w ->
+      valid_p p -> w.queue[p] -> w.ln[p] < w.rn[p][p]
+
+  goal tokenLocationNotQueued :
+    forall w: world. reachableC w -> not w.queue[tokenAt w]
+
+  (* Non-vacuity: the machine moves, and the token holder can reach its
+     critical section from the initial state. *)
+  let lemma initialStateMakesProgress (w: world)
+    requires { initWorld w }
+    ensures  { exists w1 w2 : world.
+                 step w w1 /\ step w1 w2 /\ w2.crit[0] }
+  =
+    assert { valid_p 0 };
+    let w1 = request w 0 in
+    assert { stepind w w1 };
+    assert { enterCS_enbld w1 0 };
+    let w2 = enterCS w1 0 in
+    assert { stepind w1 w2 }
+
+end

@@ -1,0 +1,22 @@
+{
+  "profile": [],
+  "proofs": {
+    "TokenMutex": {
+      "acquireToken": { "prover": "cvc5@1.0.3", "time": 0.015 },
+      "enter": { "prover": "alt-ergo@2.4.2", "time": 0.013 },
+      "inCritImpliesToken": { "prover": "cvc5@1.0.3", "time": 0.039 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.021 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "leave": { "prover": "cvc5@1.0.3", "time": 0.091 },
+      "mutualExclusion": { "prover": "cvc5@1.0.3", "time": 0.038 },
+      "one_in_crit": { "prover": "cvc5@1.0.3", "time": 0.016 },
+      "refn_inCS": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.015 },
+      "tokenIsUnique": { "prover": "alt-ergo@2.4.2", "time": 0.006 },
+      "transfer": { "prover": "cvc5@1.0.3", "time": 0.033 },
+      "yieldToken": { "prover": "cvc5@1.0.3", "time": 0.017 }
+    }
+  }
+}

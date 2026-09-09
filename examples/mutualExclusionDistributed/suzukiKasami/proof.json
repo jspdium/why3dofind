@@ -1,0 +1,40 @@
+{
+  "profile": [],
+  "proofs": {
+    "SuzukiKasami": {
+      "broadcastRequestsAreReal": { "prover": "cvc5@1.0.3", "time": 0.053 },
+      "enqueue": { "prover": "cvc5@1.0.3", "time": 0.037 },
+      "enterCS": { "prover": "cvc5@1.0.3", "time": 0.034 },
+      "exitCS": { "prover": "cvc5@1.0.3", "time": 0.115 },
+      "inCSHoldsToken": { "prover": "cvc5@1.0.3", "time": 0.041 },
+      "initWorld": { "prover": "cvc5@1.0.3", "time": 0.05 },
+      "initWorldA'refn": { "prover": "cvc5@1.0.3", "time": 0.009 },
+      "initWorldC'refn": { "prover": "cvc5@1.0.3", "time": 0.008 },
+      "initialStateMakesProgress": { "prover": "cvc5@1.0.3", "time": 0.054 },
+      "knowledgeBoundedBySource": { "prover": "cvc5@1.0.3", "time": 0.065 },
+      "mutualExclusion": { "prover": "cvc5@1.0.3", "time": 0.043 },
+      "queuedProcessesWantTheToken": { "prover": "cvc5@1.0.3", "time": 0.06 },
+      "recvRequest": {
+        "tactic": "split_vc",
+        "children": [
+          { "prover": "cvc5@1.0.3", "time": 0.007 },
+          { "prover": "cvc5@1.0.3", "time": 0.007 },
+          { "prover": "cvc5@1.0.3", "time": 0.007 },
+          { "prover": "cvc5@1.0.3", "time": 0.007 },
+          { "prover": "cvc5@1.0.3", "time": 0.027 },
+          { "prover": "alt-ergo@2.4.2", "time": 1.8 }
+        ]
+      },
+      "recvToken": { "prover": "cvc5@1.0.3", "time": 0.032 },
+      "refn": { "prover": "cvc5@1.0.3", "time": 0.007 },
+      "refn_inCrit": { "prover": "cvc5@1.0.3", "time": 0.019 },
+      "refn_token": { "prover": "cvc5@1.0.3", "time": 0.024 },
+      "request": { "prover": "cvc5@1.0.3", "time": 1.2 },
+      "sendToken": { "prover": "cvc5@1.0.3", "time": 0.08 },
+      "servedBoundedByRequested": { "prover": "cvc5@1.0.3", "time": 0.057 },
+      "stepA'refn": { "prover": "cvc5@1.0.3", "time": 0.019 },
+      "stepC'refn": { "prover": "alt-ergo@2.4.2", "time": 0.059 },
+      "tokenLocationNotQueued": { "prover": "cvc5@1.0.3", "time": 0.04 }
+    }
+  }
+}

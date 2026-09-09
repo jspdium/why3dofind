@@ -1,0 +1,192 @@
+(* ============================================================
+   Token-based mutual exclusion — intermediate machine.
+
+   Refines MutexSpec.  Carries, once and for all token algorithms, the
+   argument that a unique token yields mutual exclusion.
+
+   State      token   which process currently holds the token
+              inCrit  which process is in its critical section
+
+   Actions    transfer c n   the token passes atomically from c to n
+              yieldToken c   c gives up the token; it is now nowhere
+              acquireToken n n takes a token that nobody holds
+              enter p        the token holder enters its CS
+              leave p        it leaves
+
+   Invariant  at most one process holds the token, and a process in its
+              CS holds it.  Mutual exclusion follows immediately, and
+              that derivation is the whole point of this machine: a
+              refining algorithm never has to make it again.
+
+   yieldToken and acquireToken are the pair a message-passing algorithm
+   needs, since the token is held by nobody while it is on the wire.
+   transfer is the atomic special case, for algorithms where the token
+   moves in one step.  Carrying all three costs little and lets both
+   kinds of algorithm refine this machine directly.
+
+   Limitations
+     - "At most one token", not "exactly one".  Nothing here says a token
+       exists at all, so an algorithm that loses its token still refines
+       this machine.  Token conservation is the refining algorithm's
+       obligation; OneToken, in mutualExclusionToken, is the spec that
+       requires exactly one, and it is a poor fit here precisely because
+       it cannot express a token in transit.
+     - acquireToken's guard quantifies over all processes.  That is a
+       specification device: a real process cannot check that nobody
+       holds the token.  A refining algorithm discharges it from its own
+       invariant — typically from the token being in flight to it.
+     - Safety only.  Nothing says the token ever reaches a process that
+       wants it, so starvation-freedom is out of scope.
+   ============================================================ *)
+
+module TokenMutex
+
+  use int.Int
+  use map.Map
+  use MutexSpec.MutexSpec
+
+  predicate valid_p (p: MutexSpec.pid) = 0 <= p < MutexSpec.n_processes
+
+  type world = {
+    token  : map MutexSpec.pid bool;
+    inCrit : map MutexSpec.pid bool;
+  }
+
+  let ghost function refn (w: world) : MutexSpec.world =
+    { MutexSpec.inCS = w.inCrit }
+
+  lemma refn_inCS :
+    forall w: world, p: MutexSpec.pid.
+      (refn w).MutexSpec.inCS[p] = w.inCrit[p]
+
+  predicate inv (w: world) =
+    (forall p q: MutexSpec.pid. valid_p p -> valid_p q ->
+       w.token[p] -> w.token[q] -> p = q)
+    /\
+    (forall p: MutexSpec.pid. valid_p p -> w.inCrit[p] -> w.token[p])
+
+  (* The reason this machine exists. *)
+  lemma one_in_crit :
+    forall w: world, p q: MutexSpec.pid.
+      inv w -> valid_p p -> valid_p q ->
+      w.inCrit[p] -> w.inCrit[q] -> p = q
+
+  predicate initWorld_p (w: world) =
+    w.token[0] /\
+    (forall p: MutexSpec.pid. valid_p p -> p <> 0 -> not w.token[p]) /\
+    (forall p: MutexSpec.pid. valid_p p -> not w.inCrit[p])
+
+  let ghost predicate initWorld (w: world)
+    ensures { result -> inv w }
+    ensures { result -> MutexSpec.initWorld (refn w) }
+  = initWorld_p w
+
+  (* ---------------------------------------------------------------- *)
+  (* Token movement                                                   *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate transfer_enbld (w: world) (c n: MutexSpec.pid) =
+    valid_p c /\ valid_p n /\ c <> n /\ w.token[c] /\ not w.inCrit[c]
+
+  let ghost function transfer (w: world) (c n: MutexSpec.pid) : world
+    requires { transfer_enbld w c n }
+    ensures  { result.token = w.token[c <- false][n <- true] }
+    ensures  { result.inCrit = w.inCrit }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> inv result }
+  = { token = w.token[c <- false][n <- true]; inCrit = w.inCrit }
+
+  predicate yieldToken_enbld (w: world) (c: MutexSpec.pid) =
+    valid_p c /\ w.token[c] /\ not w.inCrit[c]
+
+  let ghost function yieldToken (w: world) (c: MutexSpec.pid) : world
+    requires { yieldToken_enbld w c }
+    ensures  { result.token = w.token[c <- false] }
+    ensures  { result.inCrit = w.inCrit }
+    ensures  { inv w -> forall p: MutexSpec.pid.
+                          valid_p p -> not result.token[p] }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> inv result }
+  = { token = w.token[c <- false]; inCrit = w.inCrit }
+
+  predicate acquireToken_enbld (w: world) (n: MutexSpec.pid) =
+    valid_p n /\ (forall p: MutexSpec.pid. valid_p p -> not w.token[p])
+
+  let ghost function acquireToken (w: world) (n: MutexSpec.pid) : world
+    requires { acquireToken_enbld w n }
+    ensures  { result.token = w.token[n <- true] }
+    ensures  { result.inCrit = w.inCrit }
+    ensures  { refn result = refn w }
+    ensures  { inv w -> inv result }
+  = { token = w.token[n <- true]; inCrit = w.inCrit }
+
+  (* ---------------------------------------------------------------- *)
+  (* Critical section                                                 *)
+  (* ---------------------------------------------------------------- *)
+
+  predicate enter_enbld (w: world) (p: MutexSpec.pid) =
+    valid_p p /\ w.token[p] /\ not w.inCrit[p]
+
+  let ghost function enter (w: world) (p: MutexSpec.pid) : world
+    requires { enter_enbld w p }
+    ensures  { result.token = w.token }
+    ensures  { result.inCrit = w.inCrit[p <- true] }
+    ensures  { inv w -> MutexSpec.enter_enbld (refn w) p }
+    ensures  { inv w -> refn result = MutexSpec.enter (refn w) p }
+    ensures  { inv w -> inv result }
+  = { token = w.token; inCrit = w.inCrit[p <- true] }
+
+  predicate leave_enbld (w: world) (p: MutexSpec.pid) =
+    valid_p p /\ w.inCrit[p]
+
+  let ghost function leave (w: world) (p: MutexSpec.pid) : world
+    requires { leave_enbld w p }
+    ensures  { result.token = w.token }
+    ensures  { result.inCrit = w.inCrit[p <- false] }
+    ensures  { MutexSpec.leave_enbld (refn w) p }
+    ensures  { refn result = MutexSpec.leave (refn w) p }
+    ensures  { inv w -> inv result }
+  = { token = w.token; inCrit = w.inCrit[p <- false] }
+
+  (* ---------------------------------------------------------------- *)
+  (* Transition relation and refinement                               *)
+  (* ---------------------------------------------------------------- *)
+
+  inductive stepind world world =
+    | step_transfer : forall w: world, c n: MutexSpec.pid.
+        transfer_enbld w c n -> stepind w (transfer w c n)
+    | step_yield : forall w: world, c: MutexSpec.pid.
+        yieldToken_enbld w c -> stepind w (yieldToken w c)
+    | step_acquire : forall w: world, n: MutexSpec.pid.
+        acquireToken_enbld w n -> stepind w (acquireToken w n)
+    | step_enter : forall w: world, p: MutexSpec.pid.
+        enter_enbld w p -> stepind w (enter w p)
+    | step_leave : forall w: world, p: MutexSpec.pid.
+        leave_enbld w p -> stepind w (leave w p)
+
+  let ghost predicate step (w1: world) (w2: world) = stepind w1 w2
+
+  clone export refinement.Refinement with
+    type worldC      = world,
+    type worldA      = MutexSpec.world,
+    val refn         = refn,
+    predicate invC   = inv,
+    predicate invA   = MutexSpec.inv,
+    val initWorldC   = initWorld,
+    val initWorldA   = MutexSpec.initWorld,
+    val stepC        = step,
+    val stepA        = MutexSpec.step
+
+  goal mutualExclusion :
+    forall w: world, p q: MutexSpec.pid. reachableC w ->
+      valid_p p -> valid_p q -> w.inCrit[p] -> w.inCrit[q] -> p = q
+
+  goal tokenIsUnique :
+    forall w: world, p q: MutexSpec.pid. reachableC w ->
+      valid_p p -> valid_p q -> w.token[p] -> w.token[q] -> p = q
+
+  goal inCritImpliesToken :
+    forall w: world, p: MutexSpec.pid. reachableC w ->
+      valid_p p -> w.inCrit[p] -> w.token[p]
+
+end

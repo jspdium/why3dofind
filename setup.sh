@@ -36,6 +36,8 @@ install_pkg PetersonFilter  examples/mutualExclusionConcurrent/PetersonFilter.ml
 install_pkg MutexSpec      examples/mutualExclusionDistributed/MutexSpec.mlw
 install_pkg Lamport        examples/mutualExclusionDistributed/Lamport.mlw
 install_pkg RicartAgrawala examples/mutualExclusionDistributed/RicartAgrawala.mlw
+install_pkg tokenMutex     examples/mutualExclusionDistributed/tokenMutex.mlw
+install_pkg suzukiKasami   examples/mutualExclusionDistributed/suzukiKasami.mlw
 
 # mutualExclusionToken
 install_pkg oneToken        examples/mutualExclusionToken/oneToken.mlw
