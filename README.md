@@ -6,28 +6,22 @@ for proof management.
 
 ## Structure
 
-```
-stateMachineModels/       Base library (inductive invariants, refinement)
-examples/counter/         Concurrent counter using a lock, by refinement
-examples/twoPhase/        Two-phase handshake protocol, by refinement
-examples/mutualExclusionConcurrent/
-                          Concurrent mutual exclusion (Peterson, Bakery, filter, etc.)
-examples/mutualExclusionDistributed/
-                          Distributed mutual exclusion (Lamport, Ricart-Agrawala)
-examples/mutualExclusionToken/
-                          Dijkstra self-stabilizing ring and bidirectional array
-examples/leaderElection/  Chang-Roberts leader election + Bully, by refinement
-examples/waitFreeRegister/
-                          Simpson's 4-slot wait-free register, by refinement
-examples/paxosNoRefinement/
-                          Paxos consensus (stand-alone, no refinement)
-examples/paxos/            Paxos consensus, two-step refinement
-examples/raft/             Raft leader election, three-step refinement chain (ledger → core → net)
-examples/dynamicBully/    Dynamic Bully leader election with crash/recovery, by refinement
-examples/controlledFlooding/
-                          Controlled flooding broadcast, by refinement
-wip/                      Work-in-progress examples (not part of the library)
-```
+| Folder | Description |
+|---|---|
+| [stateMachineModels/](stateMachineModels) | Base library (inductive invariants, refinement) |
+| [examples/counter/](examples/counter) | Concurrent counter using a lock, by refinement |
+| [examples/twoPhase/](examples/twoPhase) | Two-phase handshake protocol, by refinement |
+| [examples/mutualExclusionConcurrent/](examples/mutualExclusionConcurrent) | Concurrent mutual exclusion (Peterson, Bakery, filter) |
+| [examples/mutualExclusionDistributed/](examples/mutualExclusionDistributed) | Distributed mutual exclusion (Lamport, Ricart-Agrawala, Suzuki-Kasami) |
+| [examples/mutualExclusionToken/](examples/mutualExclusionToken) | Dijkstra self-stabilizing ring and bidirectional array |
+| [examples/leaderElection/](examples/leaderElection) | Chang-Roberts and Bully leader election, by refinement |
+| [examples/dynamicBully/](examples/dynamicBully) | Dynamic Bully leader election with crash/recovery |
+| [examples/waitFreeRegister/](examples/waitFreeRegister) | Simpson's 4-slot wait-free register, by refinement |
+| [examples/paxosNoRefinement/](examples/paxosNoRefinement) | Paxos consensus (stand-alone, no refinement) |
+| [examples/paxos/](examples/paxos) | Paxos consensus, two-step refinement |
+| [examples/raft/](examples/raft) | Raft leader election, three-step refinement chain |
+| [examples/controlledFlooding/](examples/controlledFlooding) | Controlled flooding broadcast |
+| [wip/](wip) | Work-in-progress examples (not part of the library) |
 
 Cross-file dependencies in why3find are resolved through installed
 packages, not folder loadpaths. Files that are depended upon by other
